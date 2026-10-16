@@ -104,8 +104,8 @@ export function updateFoot(dt: number) {
   }
 
   // Rhythm on open sand draws the maker. Sandwalking (C) barely registers.
-  if (p.grounded && !p.onRock && hs > 0.6) rt.wormsign += (p.running ? 0.05 : p.sandwalk ? 0.004 : 0.02) * dt
-  else rt.wormsign -= (p.onRock ? 0.12 : 0.05) * dt
+  if (p.grounded && !p.onRock && hs > 0.6) rt.wormsign += (p.running ? 0.035 : p.sandwalk ? 0.002 : 0.012) * dt
+  else rt.wormsign -= (p.onRock ? 0.15 : 0.04) * dt
 
   const mount = findMount(p.pos.x, p.pos.y, p.pos.z, false)
   const t = rt.thopter

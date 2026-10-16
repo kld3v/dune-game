@@ -91,16 +91,23 @@ function updateRiding() {
   if (pressed('KeyE')) dismount()
 }
 
+let warned = false
+
 function updateThreats(dt: number) {
   rt.wormsign = clamp(rt.wormsign, 0, 1)
   if (rt.hunted) {
     rt.wormsign = 1
   } else {
     if (wasHunted) rt.wormsign = Math.min(rt.wormsign, 0.4)
+    if (rt.wormsign < 0.5) warned = false
+    if (rt.wormsign > 0.75 && !warned) {
+      warned = true
+      toast('The sand trembles. Something has heard your rhythm.', 'warn', 5000)
+    }
     if (rt.wormsign >= 1 && rt.mode === 'foot' && !rt.player.onRock) {
       spawnHunter()
       if (rt.worms.some((w) => w.kind === 'hunter')) {
-        toast('WORMSIGN. Something is hunting your rhythm. Get to rock.', 'warn', 6500)
+        toast('WORMSIGN. A worm is hunting you. Reach rock, take to the air, or plant a thumper to lure it off.', 'warn', 7500)
       } else {
         rt.wormsign = 0.9
       }

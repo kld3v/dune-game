@@ -82,7 +82,7 @@ export function updateSpice(dt: number) {
   }
   if (harvesting) {
     rt.melange = Math.min(1.8, rt.melange + 0.012 * dt)
-    if (rt.mode === 'foot') rt.wormsign += 0.03 * dt
+    if (rt.mode === 'foot') rt.wormsign += 0.02 * dt
     rt.pickupT -= dt
     if (rt.pickupT <= 0) {
       audio.pickup()

@@ -14,6 +14,7 @@ export const input = {
 
 const PREVENT = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'])
 let canvasEl: HTMLElement | null = null
+let ignoreUntil = 0
 
 export function initInput(canvas: HTMLElement, hooks: { onUnlock: () => void; onEscape: () => void }) {
   if (canvasEl) return
@@ -31,11 +32,13 @@ export function initInput(canvas: HTMLElement, hooks: { onUnlock: () => void; on
     input.dragging = false
   })
 
-  // Chrome occasionally reports huge movement spikes right after locking; clamp them.
+  // Chrome reports a large bogus movement right after the lock engages: drop input for a
+  // moment after locking, and clamp any later spikes.
   document.addEventListener('mousemove', (e) => {
     if (!input.locked && !input.dragging) return
-    input.mdx += clamp(e.movementX, -200, 200)
-    input.mdy += clamp(e.movementY, -200, 200)
+    if (performance.now() < ignoreUntil) return
+    input.mdx += clamp(e.movementX, -120, 120)
+    input.mdy += clamp(e.movementY, -120, 120)
   })
 
   // Fallback when pointer lock is unavailable: drag to look.
@@ -49,6 +52,7 @@ export function initInput(canvas: HTMLElement, hooks: { onUnlock: () => void; on
   document.addEventListener('pointerlockchange', () => {
     const was = input.locked
     input.locked = document.pointerLockElement === canvasEl
+    if (input.locked) ignoreUntil = performance.now() + 150
     if (was && !input.locked) hooks.onUnlock()
   })
 }

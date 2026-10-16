@@ -274,7 +274,7 @@ function approach(w: Worm, dt: number) {
   const dist = Math.hypot(dx, dz)
   const desired = w.kind === 'wild' ? w.baseYaw + Math.sin(w.life * 0.17) * 0.5 : Math.atan2(dx, dz)
   steer(w, desired, 1.5, dt)
-  w.speed = damp(w.speed, w.kind === 'wild' ? 15 : w.kind === 'hunter' ? 28 : 26, 0.8, dt)
+  w.speed = damp(w.speed, w.kind === 'wild' ? 15 : w.kind === 'hunter' ? 24 : 26, 0.8, dt)
   advance(w, w.speed, DEPTH_DEEP, 3, dt)
   w.mouthTarget = 0
 
@@ -510,7 +510,7 @@ export function spawnWild(near: THREE.Vector3) {
 }
 
 export function spawnHunter() {
-  const w = spawnWorm('hunter', rt.player.pos, 190)
+  const w = spawnWorm('hunter', rt.player.pos, 240)
   if (!w) return
   w.target.copy(rt.player.pos)
   audio.breach(0.15, panFor(w.head.x, w.head.z))

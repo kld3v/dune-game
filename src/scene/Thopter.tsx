@@ -7,7 +7,6 @@ import { reflective } from './reflections'
 
 interface Wing {
   pivot: THREE.Group
-  side: number
   phase: number
 }
 
@@ -82,7 +81,7 @@ function build() {
       pivot.add(w, sp)
       anchor.add(pivot, new THREE.Mesh(blurGeo, blurMat))
       root.add(anchor)
-      wings.push({ pivot, side, phase })
+      wings.push({ pivot, phase })
     }
   }
   return { root, wings, blurMat, glow }

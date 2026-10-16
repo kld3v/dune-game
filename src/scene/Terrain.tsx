@@ -145,7 +145,8 @@ const COLOR = /* glsl */ `
   sand *= 0.92 + 0.12 * n2;
   sand = mix(sand, sand * vec3(0.86, 0.74, 0.66), smoothstep(0.12, 0.42, vSlope));
   float strata = 0.5 + 0.5 * sin(wp.y * 1.9 + n1 * 3.0);
-  vec3 rock = mix(uRockA, uRockB, strata) * (0.75 + 0.35 * n2);
+  float crack = 1.0 - smoothstep(0.0, 0.05, abs(tVal(wp.xz * 0.35 + wp.y * 0.2) - 0.5));
+  vec3 rock = mix(uRockA, uRockB, strata) * (0.75 + 0.35 * n2) * (1.0 - 0.45 * crack);
   float rk = smoothstep(0.25, 0.6, vRock) * (0.55 + 0.45 * smoothstep(0.08, 0.35, vSlope + vRock * 0.2));
   vec3 col = mix(sand, rock, clamp(rk, 0.0, 1.0));
   gSpice = 0.0;
@@ -157,7 +158,7 @@ const COLOR = /* glsl */ `
     gSpice = max(gSpice, s.w * (1.0 - smoothstep(edge * 0.55, edge, d)));
   }
   gSpice *= 1.0 - smoothstep(0.2, 0.5, vRock);
-  col = mix(col, uSpiceCol * (0.85 + 0.3 * n2), gSpice * 0.88);
+  col = mix(col, uSpiceCol * (0.85 + 0.3 * n2), gSpice * 0.78);
   col = mix(col, col.bgr * vec3(0.55, 0.7, 1.35), smoothstep(0.3, 1.0, uTrip) * 0.55);
   diffuseColor.rgb = col;
 }
@@ -175,6 +176,18 @@ const NORMAL = /* glsl */ `
     s = s * abs(s);
     vec3 dW = vec3(uWind.x, 0.0, uWind.y) * (s * 0.2 * rFade);
     normal = normalize(normal + (viewMatrix * vec4(dW, 0.0)).xyz);
+  }
+  // Rock gets a bumped, broken surface from the gradient of two octaves of noise.
+  float kAmt = smoothstep(0.3, 0.7, vRock) * (1.0 - smoothstep(30.0, 150.0, camD));
+  if (kAmt > 0.001) {
+    vec3 q = vTWorld * 0.9;
+    float e = 0.15;
+    vec2 o2 = vec2(q.y * 0.7);
+    float n0 = tVal(q.xz) + 0.5 * tVal(q.xz * 2.3 + o2);
+    float nx = tVal(q.xz + vec2(e, 0.0)) + 0.5 * tVal((q.xz + vec2(e, 0.0)) * 2.3 + o2);
+    float nz = tVal(q.xz + vec2(0.0, e)) + 0.5 * tVal((q.xz + vec2(0.0, e)) * 2.3 + o2);
+    vec3 dR = vec3(n0 - nx, 0.0, n0 - nz) / e * 0.26 * kAmt;
+    normal = normalize(normal + (viewMatrix * vec4(dR, 0.0)).xyz);
   }
 }
 `
@@ -249,7 +262,7 @@ export function Terrain() {
       uSandB: { value: new THREE.Color('#bb7440') },
       uRockA: { value: new THREE.Color('#4e3326') },
       uRockB: { value: new THREE.Color('#87573a') },
-      uSpiceCol: { value: new THREE.Color('#c4441a') },
+      uSpiceCol: { value: new THREE.Color('#d8662a') },
       uWind: { value: new THREE.Vector2(WIND_X, WIND_Z) },
     }
 
