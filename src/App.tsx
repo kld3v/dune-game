@@ -1,68 +1,53 @@
-import { Canvas } from '@react-three/fiber'
-import { Suspense } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import Terrain from './components/Terrain'
-import Player from './components/Player'
-import Sandworm from './components/Sandworm'
-import Ornithopter from './components/Ornithopter'
-import SpiceFields from './components/SpiceField'
-import { Sky, SandDust, Sandstorm, ThumpRipples } from './components/Environment'
-import { HallucinationPostFX, HallucinationOverlayObjects } from './components/HallucinationEffects'
-import HUD from './components/HUD'
+import { initInput } from './game/input'
+import { pauseGame, update } from './game/sim'
+import { Terrain } from './scene/Terrain'
+import { Sky } from './scene/Sky'
+import { Lighting } from './scene/Lighting'
+import { PlayerModel } from './scene/PlayerModel'
+import { Thopter } from './scene/Thopter'
+import { Worms } from './scene/Worms'
+import { Thumper } from './scene/Thumper'
+import { Particles } from './scene/Particles'
+import { Visions } from './scene/Visions'
+import { PostFX } from './scene/PostFX'
+import { HUD } from './ui/HUD'
+import { Screens } from './ui/Screens'
 
-function Scene() {
-  return (
-    <>
-      <Sky />
-      <SandDust />
-      <Sandstorm />
-
-      <ambientLight intensity={0.4} color="#ffe8aa" />
-      <directionalLight
-        position={[60, 80, -200]}
-        intensity={2.5}
-        color="#fff4cc"
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-far={500}
-        shadow-camera-left={-100}
-        shadow-camera-right={100}
-        shadow-camera-top={100}
-        shadow-camera-bottom={-100}
-      />
-      <hemisphereLight args={['#c45b00', '#4a2a00', 0.5]} />
-      <fog attach="fog" args={['#c45b00', 80, 260]} />
-
-      <Terrain />
-      <SpiceFields />
-      <ThumpRipples />
-      <Player />
-      <Sandworm />
-      <Ornithopter />
-      <HallucinationOverlayObjects />
-      <HallucinationPostFX />
-    </>
-  )
+// Must stay the first useFrame subscriber: it runs the whole simulation, then every
+// render component reads the fresh state in its own useFrame.
+function GameLoop() {
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
+  useFrame((_, delta) => update(delta, camera))
+  return null
 }
 
 export default function App() {
   return (
     <>
       <Canvas
-        camera={{ fov: 70, near: 0.1, far: 600, position: [0, 10, 15] }}
-        gl={{
-          antialias: true,
-          toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.1,
-        }}
-        shadows
-        style={{ position: 'fixed', inset: 0 }}
+        flat
+        shadows="percentage"
+        dpr={[1, 1.5]}
+        gl={{ antialias: false, powerPreference: 'high-performance', stencil: false }}
+        camera={{ fov: 62, near: 0.3, far: 5000, position: [0, 40, 0] }}
+        onCreated={({ gl }) => initInput(gl.domElement, { onUnlock: pauseGame, onEscape: pauseGame })}
       >
-        <Suspense fallback={null}>
-          <Scene />
-        </Suspense>
+        <GameLoop />
+        <Lighting />
+        <Sky />
+        <Terrain />
+        <PlayerModel />
+        <Thopter />
+        <Worms />
+        <Thumper />
+        <Particles />
+        <Visions />
+        <PostFX />
       </Canvas>
       <HUD />
+      <Screens />
     </>
   )
 }
