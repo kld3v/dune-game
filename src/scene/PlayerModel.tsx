@@ -78,6 +78,7 @@ function play(rig: Rig, name: Clip, fade: number) {
   const prev = rig.current ? rig.actions.get(rig.current) : undefined
   next.reset()
   if (name === 'jump') next.time = next.getClip().duration * 0.28
+  if (name === 'drink') next.time = 2.0
   next.setEffectiveWeight(1).fadeIn(fade).play()
   if (prev && prev !== next) prev.fadeOut(fade)
   rig.current = name
@@ -87,7 +88,7 @@ function pickClip(): Clip {
   const p = rt.player
   if (rt.mode === 'worm') return 'ride'
   if (!p.grounded && (p.vel.y > 2 || p.airTime > 0.25)) return p.vel.y > 2 ? 'jump' : 'fall'
-  if (p.speed < 0.6) return rt.time - rt.doseAt < 2.6 ? 'drink' : 'idle'
+  if (p.speed < 0.6) return rt.time - rt.doseAt < 3.6 ? 'drink' : 'idle'
   if (p.sandwalk) return 'sneak'
   if (p.running) return 'sprint'
   return p.speed < 2.8 ? 'walk' : 'jog'

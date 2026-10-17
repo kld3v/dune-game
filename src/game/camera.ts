@@ -84,9 +84,9 @@ export function placeCamera(dt: number, camera: THREE.PerspectiveCamera) {
     pmax = 1
   } else if (rt.mode === 'worm') {
     tx = p.x
-    ty = p.y + 2.4
+    ty = p.y + 2.2
     tz = p.z
-    targetDist = 30
+    targetDist = 21
     k = 6
     pmin = -1.0
     pmax = 0.25
