@@ -1,11 +1,11 @@
 import * as THREE from 'three'
 import { rt, type SpiceField } from './rt'
 import { findSandSpot, terrainHeight } from './terrain'
-import { TAU, bearingOf, clamp, rand } from './math'
+import { TAU, bearingOf, rand } from './math'
 import { spiceEruption, spiceMote, wake } from './fx'
 import { audio } from './audio'
 import { toast } from './ui'
-import { panFor, volFor } from './actions'
+import { jolt, panFor, volFor } from './actions'
 
 const MAX_FIELDS = 8
 
@@ -104,8 +104,7 @@ export function updateSpice(dt: number) {
       addField(b.x, b.z, rand(16, 22), rand(85, 125))
       blowPos.set(b.x, g, b.z)
       audio.blow(volFor(blowPos, 650), panFor(b.x, b.z))
-      const d = cam.distanceTo(blowPos)
-      rt.cam.shake = Math.max(rt.cam.shake, clamp(1 - d / 300, 0, 1) * 1.1)
+      jolt(blowPos, 0.7, 320)
       const p = rt.player.pos
       toast(`Spice blow  ·  bearing ${Math.round(bearingOf(b.x - p.x, b.z - p.z))}°`, 'spice', 6500)
       // The spice draws the maker: harvest fast.

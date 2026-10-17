@@ -1,5 +1,5 @@
 import { rt } from './rt'
-import { isDown, pressed } from './input'
+import { consume, isDown } from './input'
 import { rockMask, terrainHeight } from './terrain'
 import { TAU, clamp, damp, dampAngle, wrapAngle } from './math'
 import { audio } from './audio'
@@ -92,7 +92,7 @@ function pilot(t: Thopter, dt: number) {
   rt.player.vel.copy(t.vel)
   rt.player.onRock = false
   rt.prompt = ''
-  if (pressed('KeyE')) exitThopter()
+  if (consume('KeyE')) exitThopter()
 }
 
 function autopilot(t: Thopter, dt: number) {

@@ -142,7 +142,7 @@ export function HUD() {
       }
       if (wsLabel.current) wsLabel.current.textContent = rt.hunted ? 'Hunted' : rt.player.onRock && rt.mode === 'foot' ? 'Rock. Safe.' : ''
       const th = rt.threat
-      if (threat.current) threat.current.style.opacity = String(th > 0 ? Math.pow(th, 1.4) * (0.55 + 0.25 * Math.sin(rt.realTime * 6)) : 0)
+      if (threat.current) threat.current.style.opacity = String(th > 0 ? Math.pow(th, 1.6) * (0.3 + 0.08 * Math.sin(rt.realTime * 3)) : 0)
       if (warn.current) warn.current.style.opacity = th > 0.15 ? '1' : '0'
       if (arrow.current) arrow.current.style.transform = `rotate(${wrap180((-rt.threatBearing * 180) / Math.PI - camB)}deg)`
       if (clock.current) clock.current.textContent = timeLabel(rt.tod)

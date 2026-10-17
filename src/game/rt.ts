@@ -112,10 +112,14 @@ export const rt = {
     pitch: -0.2,
     target: new THREE.Vector3(),
     pos: new THREE.Vector3(),
-    shake: 0,
+    rumble: 0,
+    rumbleTarget: 0,
+    impulse: 0,
     fov: 62,
     snap: true,
   },
+
+  settings: { shake: true },
 
   thopter: {
     pos: new THREE.Vector3(),
@@ -160,6 +164,7 @@ export const rt = {
   visionT: 4,
   heartT: 0,
   pickupT: 0,
+  doseAt: -99,
 
   prompt: '',
   deathReason: '',

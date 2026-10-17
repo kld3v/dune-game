@@ -3,7 +3,7 @@ import { rockMask, terrainHeight } from './terrain'
 import { audio } from './audio'
 import { toast } from './ui'
 import { puff, shockRing } from './fx'
-import { panFor, volFor } from './actions'
+import { jolt, panFor, volFor } from './actions'
 import { spawnWorm } from './worms'
 
 const BEAT = 0.85
@@ -39,8 +39,7 @@ export function updateThumper(dt: number) {
     audio.thump(volFor(th.pos, 240), panFor(th.pos.x, th.pos.z))
     puff(th.pos.x, th.pos.y, th.pos.z, 1.2, 4)
     shockRing(th.pos.x, th.pos.y, th.pos.z, 6, 14)
-    const d = rt.cam.pos.distanceTo(th.pos)
-    if (d < 25) rt.cam.shake = Math.max(rt.cam.shake, 0.12 * (1 - d / 25))
+    jolt(th.pos, 0.05, 25)
   }
   th.phase = th.beat / BEAT
   if (!th.called && th.t > 3) {

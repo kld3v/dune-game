@@ -42,6 +42,7 @@ export function takeSpice() {
   rt.spice -= 10
   rt.melange = Math.min(1.8, rt.melange + 0.38)
   rt.stats.doses++
+  rt.doseAt = rt.time
   audio.consume()
   if (rt.eye < 0.05) placeEye()
   toast(pick(RUSH), 'spice', 3000)

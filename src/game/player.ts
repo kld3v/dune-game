@@ -1,5 +1,5 @@
 import { rt } from './rt'
-import { isDown, pressed } from './input'
+import { consume, isDown } from './input'
 import { rockMask, terrainHeight } from './terrain'
 import { damp, dampAngle } from './math'
 import { findMount, mountWorm } from './worms'
@@ -30,11 +30,11 @@ export function updateFoot(dt: number) {
   }
   p.running = len > 0 && (isDown('ShiftLeft') || isDown('ShiftRight'))
   p.sandwalk = len > 0 && !p.running && isDown('KeyC')
-  const speed = len === 0 ? 0 : p.running ? 11 : p.sandwalk ? 3.2 : 6
+  const speed = len === 0 ? 0 : p.running ? 9.5 : p.sandwalk ? 1.9 : 5.2
   const k = p.grounded ? 12 : 2.5
   p.vel.x = damp(p.vel.x, ix * speed, k, dt)
   p.vel.z = damp(p.vel.z, iz * speed, k, dt)
-  if (p.grounded && pressed('Space')) {
+  if (p.grounded && consume('Space')) {
     p.vel.y = 8.5
     p.grounded = false
   }
@@ -111,10 +111,10 @@ export function updateFoot(dt: number) {
   const t = rt.thopter
   const nearThopter = t.alive && Math.hypot(t.pos.x - p.pos.x, t.pos.z - p.pos.z) < 7.5 && Math.abs(t.pos.y - p.pos.y) < 6
   rt.prompt = mount ? 'E  Set the maker hooks' : nearThopter ? 'E  Board the ornithopter' : ''
-  if (pressed('KeyE')) {
+  if ((mount || nearThopter) && consume('KeyE')) {
     if (mount) mountWorm(mount.w, mount.s)
-    else if (nearThopter) boardThopter()
+    else boardThopter()
   }
-  if (pressed('KeyT')) plantThumper()
-  if (pressed('KeyQ')) callThopter()
+  if (consume('KeyT')) plantThumper()
+  if (consume('KeyQ')) callThopter()
 }

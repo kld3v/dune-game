@@ -8,7 +8,7 @@ import { TAU, approachAngle, clamp, damp, rand, wrapAngle } from './math'
 import { RADII, ringOf } from './wormShape'
 import { audio } from './audio'
 import { sandBurst, shockRing, wake } from './fx'
-import { destroyThopter, destroyThumper, killPlayer, panFor, volFor } from './actions'
+import { destroyThopter, destroyThumper, jolt, killPlayer, panFor, volFor } from './actions'
 import { isDown } from './input'
 import { toast } from './ui'
 
@@ -221,6 +221,7 @@ function slam(w: Worm, x: number, g: number, z: number) {
   sandBurst(x, g, z, 1.6, 520)
   shockRing(x, g, z, 22, 140)
   audio.crash(volFor(w.head, 450), panFor(x, z))
+  jolt(w.head, 0.9, 260)
   if (rt.phase !== 'playing') return
   const radius = R * 1.6
   if (rt.mode === 'foot' && !rt.player.onRock) {
@@ -303,6 +304,7 @@ function breach(w: Worm) {
     w.splashUp = true
     sandBurst(x, g, z, 1.3, 420)
     audio.crash(volFor(w.head, 420) * 0.8, panFor(x, z))
+    jolt(w.head, 0.6, 220)
   }
   if (w.splashUp && !w.splashDown && t > 0.55 && yRel < R * 0.4) {
     w.splashDown = true
@@ -387,8 +389,8 @@ function effects(w: Worm, dt: number) {
   if (w.state === 'breach') level = Math.min(1.3, Math.max(level, near) * 1.25)
   if (w.state === 'ridden') level = 0.5
   w.rumble = level
-  const shake = w.state === 'ridden' ? 0.06 : level * (w.state === 'breach' ? 1.3 : 0.55)
-  if (shake > rt.cam.shake) rt.cam.shake = shake
+  const quake = w.state === 'ridden' ? 0.12 : w.state === 'breach' ? near * 0.85 : level * 0.5
+  if (quake > rt.cam.rumbleTarget) rt.cam.rumbleTarget = quake
 
   if (dist > 360) return
   const g = terrainHeight(w.head.x, w.head.z)
@@ -439,6 +441,7 @@ export function updateWorms(dt: number) {
       spawnWorm(pw.kind, pw.target, 170)
     }
   }
+  rt.cam.rumbleTarget = 0
   for (const w of rt.worms) updateWorm(w, dt)
   if (rt.worms.some((w) => w.dead)) rt.worms = rt.worms.filter((w) => !w.dead)
   rt.hunted = rt.worms.some((w) => w.kind === 'hunter' && w.state !== 'leave' && w.state !== 'ridden')

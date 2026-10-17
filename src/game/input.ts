@@ -75,7 +75,14 @@ export function releaseLock() {
 }
 
 export const isDown = (code: string) => input.down.has(code)
-export const pressed = (code: string) => input.pressed.has(code)
+
+// One press, one action: whoever handles a press removes it, so a single E can't
+// board the ornithopter and then exit it later in the same frame.
+export function consume(code: string): boolean {
+  if (!input.pressed.has(code)) return false
+  input.pressed.delete(code)
+  return true
+}
 
 export function endFrame() {
   input.pressed.clear()

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useUI } from '../game/ui'
 import { rt } from '../game/rt'
-import { resumeGame, rise, startGame, toggleMute } from '../game/sim'
+import { resumeGame, rise, startGame, toggleMute, toggleShake } from '../game/sim'
 
 const CONTROLS: [string, string][] = [
   ['WASD + mouse', 'walk and look'],
@@ -30,6 +30,7 @@ export function Screens() {
   const phase = useUI((s) => s.phase)
   const reason = useUI((s) => s.deathReason)
   const muted = useUI((s) => s.muted)
+  const shake = useUI((s) => s.shake)
   const [coarse] = useState(() => window.matchMedia('(pointer: coarse)').matches)
   const [canRise, setCanRise] = useState(false)
 
@@ -73,6 +74,7 @@ export function Screens() {
           <h2>Paused</h2>
           <button className="cta" onClick={resumeGame}>Return to the sand</button>
           <button className="ghost" onClick={toggleMute}>{muted ? 'Sound off' : 'Sound on'}</button>
+          <button className="ghost" onClick={toggleShake}>{shake ? 'Screen shake on' : 'Screen shake off'}</button>
           <Controls />
         </div>
       </div>

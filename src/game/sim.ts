@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { rt } from './rt'
-import { endFrame, pressed, requestLock } from './input'
+import { consume, endFrame, requestLock } from './input'
 import { updateEnv } from './env'
 import { updateFoot } from './player'
 import { updateThopter } from './thopter'
@@ -73,6 +73,25 @@ export function toggleMute() {
   useUI.setState({ muted: audio.muted })
 }
 
+export function toggleShake() {
+  rt.settings.shake = !rt.settings.shake
+  useUI.setState({ shake: rt.settings.shake })
+  try {
+    localStorage.setItem('arrakis.shake', rt.settings.shake ? '1' : '0')
+  } catch {
+    // storage unavailable (private mode); the toggle still works for this visit
+  }
+}
+
+export function loadSettings() {
+  try {
+    rt.settings.shake = localStorage.getItem('arrakis.shake') !== '0'
+  } catch {
+    rt.settings.shake = true
+  }
+  useUI.setState({ shake: rt.settings.shake })
+}
+
 const riderTmp = new THREE.Vector3()
 
 function updateRiding() {
@@ -88,7 +107,7 @@ function updateRiding() {
   rt.player.grounded = true
   rt.player.onRock = false
   rt.prompt = ''
-  if (pressed('KeyE')) dismount()
+  if (consume('KeyE')) dismount()
 }
 
 let warned = false
@@ -176,8 +195,8 @@ export function update(rawDt: number, camera: THREE.PerspectiveCamera) {
   applyLook(dt)
 
   if (playing) {
-    if (pressed('KeyM')) toggleMute()
-    if (pressed('KeyF')) takeSpice()
+    if (consume('KeyM')) toggleMute()
+    if (consume('KeyF')) takeSpice()
     if (rt.mode === 'foot') updateFoot(dt)
   }
   if (live) {

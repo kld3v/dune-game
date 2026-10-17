@@ -25,6 +25,7 @@ interface UIState {
   toasts: Toast[]
   visions: Vision[]
   muted: boolean
+  shake: boolean
   deathReason: string
 }
 
@@ -35,6 +36,7 @@ export const useUI = create<UIState>(() => ({
   toasts: [],
   visions: [],
   muted: false,
+  shake: true,
   deathReason: '',
 }))
 

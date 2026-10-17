@@ -1,8 +1,9 @@
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { initGame, installDebug } from './game/sim'
+import { initGame, installDebug, loadSettings } from './game/sim'
 
+loadSettings()
 initGame()
 installDebug()
 

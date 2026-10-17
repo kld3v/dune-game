@@ -22,6 +22,12 @@ export function volFor(p: THREE.Vector3, maxD: number): number {
   return v * v
 }
 
+// A short camera jolt that fades with distance from the camera.
+export function jolt(p: { x: number; z: number }, strength: number, radius: number) {
+  const k = clamp(1 - Math.hypot(p.x - rt.cam.pos.x, p.z - rt.cam.pos.z) / radius, 0, 1)
+  rt.cam.impulse = Math.min(1.2, rt.cam.impulse + strength * k)
+}
+
 export function killPlayer(reason: 'worm' | 'thopter') {
   if (rt.phase !== 'playing') return
   rt.phase = 'dead'
@@ -29,7 +35,7 @@ export function killPlayer(reason: 'worm' | 'thopter') {
   rt.stats.deaths++
   rt.prompt = ''
   audio.eaten()
-  rt.cam.shake = 2.2
+  rt.cam.impulse = 1
   if (reason === 'thopter') rt.thopter.alive = false
   releaseLock()
 }
