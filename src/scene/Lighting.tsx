@@ -9,6 +9,7 @@ const SHADOW_HALF = 80
 const SHADOW_RES = 2048
 const TEXEL = (SHADOW_HALF * 2) / SHADOW_RES
 const SAND = new THREE.Color('#c08a52')
+const STORM_FOG = new THREE.Color()
 
 const up = new THREE.Vector3(0, 1, 0)
 const fwd = new THREE.Vector3()
@@ -119,8 +120,13 @@ export function Lighting() {
       const c = rt.cam.pos
       const alt = Math.min(200, Math.max(0, c.y - terrainHeight(c.x, c.z)))
       fog.color.copy(e.horizon)
-      fog.near = 60 + alt * 0.9
-      fog.far = 640 + alt * 0.25
+      // Inside a storm the world closes in to a few metres of flying sand.
+      const s = rt.storm.inside
+      const near = 60 + alt * 0.9
+      const far = 640 + alt * 0.25
+      fog.near = near + (0 - near) * s
+      fog.far = far + ((rt.storm.flowing ? 70 : 32) - far) * s
+      if (s > 0) fog.color.lerp(STORM_FOG.setRGB(0.3, 0.19, 0.1).multiplyScalar(0.3 + 0.7 * e.day), s * 0.7)
     }
 
     if (rt.realTime >= env.next) {

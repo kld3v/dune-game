@@ -7,6 +7,7 @@ import {
 } from 'postprocessing'
 import { HallucinationEffect } from './effects/HallucinationEffect'
 import { AfterimagePass } from './effects/AfterimagePass'
+import { TimeEffect } from './effects/TimeEffect'
 import { rt } from '../game/rt'
 import { smoothstep } from '../game/math'
 
@@ -34,6 +35,9 @@ export function PostFX() {
     })
     composer.addPass(new EffectPass(camera, bloom))
     composer.addPass(new EffectPass(camera, new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC })))
+    const time = new TimeEffect()
+    const timePass = new EffectPass(camera, time)
+    composer.addPass(timePass)
     const hallu = new HallucinationEffect()
     const halluPass = new EffectPass(camera, hallu)
     composer.addPass(halluPass)
@@ -43,7 +47,7 @@ export function PostFX() {
     const noise = new NoiseEffect({ blendFunction: BlendFunction.OVERLAY, premultiply: false })
     noise.blendMode.opacity.value = 0.05
     composer.addPass(new EffectPass(camera, vignette, noise))
-    return { composer, bloom, hallu, halluPass, after, vignette }
+    return { composer, bloom, hallu, halluPass, after, vignette, time, timePass, flashWas: 0, white: 0 }
   }, [gl, scene, camera])
 
   useEffect(() => {
@@ -61,6 +65,16 @@ export function PostFX() {
     fx.after.enabled = fx.after.damp > 0.01
     fx.bloom.intensity = 0.85 + trip * 1.3
     fx.vignette.darkness = 0.5 + trip * 0.3
+    const flash = rt.flash.t > 0 ? 1 : 0
+    if (flash !== fx.flashWas) {
+      fx.white = 1
+      fx.flashWas = flash
+    }
+    fx.white = Math.max(0, fx.white - delta * 5)
+    fx.time.uniforms.get('uSlow')!.value = rt.slowmo
+    fx.time.uniforms.get('uFlash')!.value = flash
+    fx.time.uniforms.get('uWhite')!.value = fx.white
+    fx.timePass.enabled = rt.slowmo > 0.01 || flash > 0 || fx.white > 0.001
     fx.composer.render(delta)
   }, 1)
 

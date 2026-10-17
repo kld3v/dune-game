@@ -135,10 +135,10 @@ function tryFlash() {
   f.tx = target.x
   f.ty = target.y + 9
   f.tz = target.z
-  for (let i = 0; i < 260; i++) {
+  for (let i = 0; i < 120; i++) {
     const a = Math.random() * Math.PI * 2
     const sp = rand(0.5, 5)
-    glow.emit(target.x, target.y + rand(0, 3), target.z, Math.cos(a) * sp, rand(10, 34), Math.sin(a) * sp, rand(1.5, 2.6), rand(0.4, 1.4), 1.2, 1.0, 2.2, 0.35, 0.4)
+    glow.emit(target.x, target.y + rand(0, 3), target.z, Math.cos(a) * sp, rand(10, 34), Math.sin(a) * sp, rand(1.5, 2.6), rand(0.2, 0.7), 0.8, 0.7, 1.5, 0.35, 0.4)
   }
   audio.prescience()
   prophecy(text)

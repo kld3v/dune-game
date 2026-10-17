@@ -5,6 +5,7 @@ import { bearingOf, clamp, wrap180, yawToBearing } from '../game/math'
 import { fieldRadius } from '../game/spice'
 import { currentTrial, trialProgress } from '../game/trials'
 import { titleFor, xpToNext } from '../game/progress'
+import { FOE_HP, SHIELD_MAX, power } from '../game/combat'
 
 const HINTS: Record<Mode, [string, string][]> = {
   foot: [
@@ -63,6 +64,8 @@ export function HUD() {
   const visions = useUI((s) => s.visions)
   const muted = useUI((s) => s.muted)
   const dialogue = useUI((s) => s.dialogue)
+  const voiceAt = useUI((s) => s.voiceAt)
+  const prophecy = useUI((s) => s.prophecy)
 
   const strip = useRef<HTMLDivElement>(null)
   const markers = useRef<HTMLDivElement>(null)
@@ -82,6 +85,13 @@ export function HUD() {
   const lvTitle = useRef<HTMLSpanElement>(null)
   const trialName = useRef<HTMLSpanElement>(null)
   const trialGoal = useRef<HTMLSpanElement>(null)
+  const hurt = useRef<HTMLDivElement>(null)
+  const boxTop = useRef<HTMLDivElement>(null)
+  const boxBot = useRef<HTMLDivElement>(null)
+  const foeHost = useRef<HTMLDivElement>(null)
+  const stormEl = useRef<HTMLDivElement>(null)
+  const voiceChip = useRef<HTMLDivElement>(null)
+  const voiceFill = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const pool: MarkerEl[] = []
@@ -98,6 +108,30 @@ export function HUD() {
       m.el.className = `marker ${cls}`
       if (m.label) m.label.style.display = withLabel ? '' : 'none'
       return m
+    }
+    const setText = (el: HTMLElement | null, s: string) => {
+      if (el && el.textContent !== s) el.textContent = s
+    }
+    // Tags over each Harkonnen: alert state, shield and life.
+    const tags: { el: HTMLDivElement; mark: HTMLSpanElement; bars: HTMLDivElement; hp: HTMLDivElement; sh: HTMLDivElement }[] = []
+    const getTag = (i: number) => {
+      while (tags.length <= i) {
+        const el = document.createElement('div')
+        el.className = 'foe-tag'
+        const mark = document.createElement('span')
+        mark.className = 'foe-mark'
+        const bars = document.createElement('div')
+        bars.className = 'foe-bars'
+        const sh = document.createElement('div')
+        sh.className = 'foe-shield'
+        const hp = document.createElement('div')
+        hp.className = 'foe-hp'
+        bars.append(sh, hp)
+        el.append(mark, bars)
+        foeHost.current!.appendChild(el)
+        tags.push({ el, mark, bars, hp, sh })
+      }
+      return tags[i]
     }
     const showFps = new URLSearchParams(location.search).has('fps')
     let raf = 0
@@ -146,6 +180,15 @@ export function HUD() {
         place(s.x, s.z, 'm-sietch', d < 4000, `${Math.round(d)}m`)
       }
       if (rt.sietchHint.until > rt.time) place(rt.sietchHint.x, rt.sietchHint.z, 'm-hint', true, '?')
+      for (const f of rt.foes) {
+        if (f.gone || f.state === 'dead') continue
+        const alerted = f.state === 'alert' || f.state === 'chase' || f.state === 'attack' || f.state === 'hit'
+        if (alerted && Math.hypot(f.pos.x - p.x, f.pos.z - p.z) < 150) place(f.pos.x, f.pos.z, 'm-foe', false)
+      }
+      const k = rt.carrier
+      if (k.active) place(k.pos.x, k.pos.z, 'm-carrier', true, `${Math.round(Math.hypot(k.pos.x - p.x, k.pos.z - p.z))}m`)
+      const st = rt.storm
+      if (st.active && st.inside < 0.5) place(p.x - st.dirX * 100, p.z - st.dirZ * 100, 'm-storm', true)
       for (let i = n; i < pool.length; i++) pool[i].el.style.display = 'none'
 
       if (spiceVal.current) spiceVal.current.textContent = String(Math.floor(rt.spice))
@@ -155,9 +198,6 @@ export function HUD() {
         hpFill.current.classList.toggle('low', hp < 0.3)
       }
       const trial = currentTrial()
-      const setText = (el: HTMLElement | null, s: string) => {
-        if (el && el.textContent !== s) el.textContent = s
-      }
       const g = rt.progress
       setText(lvNum.current, `LV ${g.level}`)
       setText(lvTitle.current, titleFor(g.level))
@@ -183,6 +223,52 @@ export function HUD() {
       if (arrow.current) arrow.current.style.transform = `rotate(${wrap180((-rt.threatBearing * 180) / Math.PI - camB)}deg)`
       if (clock.current) clock.current.textContent = timeLabel(rt.tod)
       if (fps.current && showFps) fps.current.textContent = `${Math.round(rt.fps)} fps`
+
+      // A red edge that flares when you are hit and smoulders while life is low.
+      const c = rt.combat
+      const hit = clamp(1 - (rt.time - c.hurtAt) / 0.6, 0, 1)
+      const low = c.hp / c.maxHp < 0.3 ? 0.25 + 0.15 * Math.sin(rt.realTime * 5) : 0
+      if (hurt.current) hurt.current.style.opacity = String(Math.max(hit * 0.85, low))
+      const epic = rt.riding.epic
+      if (boxTop.current) boxTop.current.style.transform = `scaleY(${epic})`
+      if (boxBot.current) boxBot.current.style.transform = `scaleY(${epic})`
+      if (voiceChip.current) {
+        const on = rt.upgrades.voice && rt.mode === 'foot'
+        voiceChip.current.style.display = on ? '' : 'none'
+        voiceChip.current.classList.toggle('ready', c.voiceCD <= 0 && rt.melange >= 0.25)
+        voiceChip.current.classList.toggle('dry', rt.melange < 0.25)
+        if (voiceFill.current) voiceFill.current.style.transform = `scaleX(${1 - clamp(c.voiceCD / 9, 0, 1)})`
+      }
+      if (stormEl.current) {
+        const sp = rt.mode === 'thopter' ? rt.thopter.pos : p
+        let txt = ''
+        if (st.active && st.inside > 0.05) {
+          txt = st.flowing ? 'Coriolis storm  ·  flowing with it'
+            : power() >= 0.45 ? 'Coriolis storm  ·  move with the wind'
+            : 'Coriolis storm  ·  take spice and move with the wind, or reach rock, or climb above it'
+        } else if (st.active) {
+          const ahead = sp.x * st.dirX + sp.z * st.dirZ - st.front
+          if (ahead > 0 && ahead < 900) txt = `Storm front  ·  ${Math.round(ahead)}m`
+        }
+        setText(stormEl.current, txt)
+        stormEl.current.classList.toggle('flowing', st.flowing)
+      }
+      let fi = 0
+      for (const f of rt.foes) {
+        if (f.gone || f.state === 'dead' || !f.onScreen) continue
+        const d = Math.hypot(f.pos.x - p.x, f.pos.z - p.z)
+        const alerted = f.state === 'alert' || f.state === 'chase' || f.state === 'attack' || f.state === 'hit'
+        if (d > 60 && !alerted) continue
+        const tag = getTag(fi++)
+        tag.el.style.display = ''
+        tag.el.style.transform = `translate(${f.screenX}px, ${f.screenY}px)`
+        setText(tag.mark, f.state === 'stunned' ? '◇' : alerted ? '!' : f.state === 'investigate' || f.suspicion > 0.2 ? '?' : '')
+        tag.mark.className = `foe-mark${alerted ? ' hot' : f.state === 'stunned' ? ' stun' : ''}`
+        tag.hp.style.transform = `scaleX(${clamp(f.hp / FOE_HP, 0, 1)})`
+        tag.sh.style.transform = `scaleX(${clamp(f.shield / SHIELD_MAX, 0, 1)})`
+        tag.bars.style.opacity = d < 30 || f.hp < FOE_HP ? '1' : '0'
+      }
+      for (let i = fi; i < tags.length; i++) tags[i].el.style.display = 'none'
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
@@ -194,6 +280,33 @@ export function HUD() {
   return (
     <div className={`hud ${active ? '' : 'hud-hidden'}`}>
       <div className="threat" ref={threat} />
+      <div className="hurt" ref={hurt} />
+      <div className="letterbox top" ref={boxTop} />
+      <div className="letterbox bottom" ref={boxBot} />
+      <div className="foe-tags" ref={foeHost} />
+      {mode === 'worm' ? (
+        <div className="title-card" key={`ride${rt.stats.rides}`}>
+          {rt.ridden && rt.ridden.size > 2 ? 'Grandfather of the desert' : 'Shai-Hulud'}
+        </div>
+      ) : null}
+      {voiceAt ? (
+        <div className="kneel" key={voiceAt}>
+          Kneel
+        </div>
+      ) : null}
+      {prophecy ? (
+        <div className="prophecy" key={prophecy.id}>
+          {prophecy.text}
+        </div>
+      ) : null}
+      <div className="storm-line" ref={stormEl} />
+      <div className="voice-chip" ref={voiceChip} style={{ display: 'none' }}>
+        <kbd>V</kbd>
+        <span>The Voice</span>
+        <div className="voice-cd">
+          <div className="voice-fill" ref={voiceFill} />
+        </div>
+      </div>
       <div className="compass">
         <div className="compass-window">
           <div className="compass-strip" ref={strip}>

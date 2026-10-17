@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { rt, WORM_RINGS } from './rt'
 import { input, isDown } from './input'
 import { terrainHeight } from './terrain'
-import { clamp, damp } from './math'
+import { clamp, damp, smoothstep, wrapAngle } from './math'
 import { RADII } from './wormShape'
 
 const SENS = 0.0022
@@ -20,6 +20,8 @@ export function applyLook(dt: number) {
 }
 
 let dist = 24
+let roll = 0
+let prevWormYaw = NaN
 
 // First hit of a ray (origin o, unit dir d) with a sphere, or Infinity.
 function raySphere(o: THREE.Vector3, dx: number, dy: number, dz: number, cx: number, cy: number, cz: number, r: number) {
@@ -71,6 +73,8 @@ export function placeCamera(dt: number, camera: THREE.PerspectiveCamera) {
   let k: number
   let pmin: number
   let pmax: number
+  let orbit = 0
+  let lift = 0
   const p = rt.player.pos
   if (rt.phase === 'title') {
     c.yaw += dt * 0.022
@@ -83,13 +87,19 @@ export function placeCamera(dt: number, camera: THREE.PerspectiveCamera) {
     pmin = -1
     pmax = 1
   } else if (rt.mode === 'worm') {
+    // Setting the hooks: the camera starts low at the worm's flank as it rears, then
+    // swings round behind you as the ride begins.
+    const size = rt.ridden ? rt.ridden.size : 1
+    const intro = 1 - smoothstep(0, 2.8, rt.riding.mountT)
     tx = p.x
-    ty = p.y + 2.2
+    ty = p.y + 2.2 + intro * 1.5 * size
     tz = p.z
-    targetDist = 21 * Math.pow(rt.ridden ? rt.ridden.size : 1, 0.6)
+    targetDist = 21 * Math.pow(size, 0.6) * (1 - 0.4 * intro)
     k = 6
     pmin = -1.0
     pmax = 0.25
+    orbit = intro * 1.35
+    lift = intro * 0.3
   } else if (rt.mode === 'thopter') {
     const t = rt.thopter.pos
     tx = t.x
@@ -118,10 +128,12 @@ export function placeCamera(dt: number, camera: THREE.PerspectiveCamera) {
     dist = damp(dist, targetDist, 4, dt)
   }
 
-  const cp = Math.cos(c.pitch)
-  const fx = Math.sin(c.yaw) * cp
-  const fy = Math.sin(c.pitch)
-  const fz = Math.cos(c.yaw) * cp
+  const viewYaw = c.yaw + orbit
+  const viewPitch = c.pitch + lift
+  const cp = Math.cos(viewPitch)
+  const fx = Math.sin(viewYaw) * cp
+  const fy = Math.sin(viewPitch)
+  const fz = Math.cos(viewYaw) * cp
   const d = rt.phase === 'title' ? dist : occlusion(c.target, -fx, -fy, -fz, dist)
   let px = c.target.x - fx * d
   let py = c.target.y - fy * d
@@ -150,13 +162,37 @@ export function placeCamera(dt: number, camera: THREE.PerspectiveCamera) {
   c.pos.copy(camera.position)
   camera.lookAt(c.target)
   if (rt.trip > 0.15) camera.rotateZ(Math.sin(rt.time * 0.55) * 0.07 * rt.trip)
+  // Lean into the maker's turns.
+  const w = rt.mode === 'worm' ? rt.ridden : null
+  if (w) {
+    if (Number.isNaN(prevWormYaw)) prevWormYaw = w.yaw
+    const rate = wrapAngle(w.yaw - prevWormYaw) / Math.max(dt, 1e-3)
+    prevWormYaw = w.yaw
+    roll = damp(roll, clamp(rate * 0.3, -0.2, 0.2), 2.5, dt)
+  } else {
+    prevWormYaw = NaN
+    roll = damp(roll, 0, 4, dt)
+  }
+  if (Math.abs(roll) > 1e-4) camera.rotateZ(roll)
 
   const running = rt.mode === 'foot' && rt.player.running
-  const boost = (rt.mode === 'thopter' && rt.thopter.boost) || (rt.mode === 'worm' && !!rt.ridden && rt.ridden.speed > 38)
-  const fov = 62 + (running ? 5 : 0) + (boost ? 10 : 0) + Math.sin(rt.time * 0.7) * 5 * rt.trip
+  const boost = rt.mode === 'thopter' && rt.thopter.boost
+  const surge = w ? clamp((w.speed - 20) / 26, 0, 1) : 0
+  const fov = 62 + (running ? 5 : 0) + (boost ? 10 : 0) + surge * 12 + Math.sin(rt.time * 0.7) * 5 * rt.trip
   c.fov = damp(c.fov, fov, 3, dt)
   if (Math.abs(camera.fov - c.fov) > 0.01) {
     camera.fov = c.fov
+    camera.updateProjectionMatrix()
+  }
+
+  // A flash-forward: cut to where the future is about to happen and drift toward it.
+  const fl = rt.flash
+  if (fl.t > 0 && rt.phase === 'playing') {
+    const k2 = (1 - fl.t / 1.9) * 0.25
+    camera.position.set(fl.x + (fl.tx - fl.x) * k2, fl.y + (fl.ty - fl.y) * k2, fl.z + (fl.tz - fl.z) * k2)
+    camera.lookAt(fl.tx, fl.ty, fl.tz)
+    camera.rotateZ(Math.sin(rt.time * 0.5) * 0.04)
+    camera.fov = 48
     camera.updateProjectionMatrix()
   }
 }

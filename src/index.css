@@ -830,3 +830,243 @@ h2 {
   font-size: 0.7rem;
   color: rgba(236, 220, 191, 0.5);
 }
+
+.hurt {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(160, 20, 10, 0.55) 100%);
+}
+
+.letterbox {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10vh;
+  background: #000;
+  transform: scaleY(0);
+  pointer-events: none;
+}
+
+.letterbox.top {
+  top: 0;
+  transform-origin: top;
+}
+
+.letterbox.bottom {
+  bottom: 0;
+  transform-origin: bottom;
+}
+
+.title-card {
+  position: absolute;
+  top: 30%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: clamp(1.6rem, 5vw, 3.4rem);
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: #f3e6c8;
+  text-shadow: 0 0 24px rgba(240, 194, 122, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  animation: title-card 4.2s ease-out forwards;
+}
+
+@keyframes title-card {
+  0% { opacity: 0; letter-spacing: 0.3em; }
+  18% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; letter-spacing: 0.62em; }
+}
+
+.kneel {
+  position: absolute;
+  top: 38%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: clamp(2.2rem, 8vw, 5.5rem);
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: #e6d8ff;
+  text-shadow: 0 0 30px #8a5cff, 0 0 60px #5a2cff;
+  opacity: 0;
+  pointer-events: none;
+  animation: kneel 1.4s ease-out forwards;
+}
+
+@keyframes kneel {
+  0% { opacity: 0; transform: scale(1.35); }
+  12% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.96); }
+}
+
+.prophecy {
+  position: absolute;
+  bottom: 22%;
+  left: 50%;
+  width: min(760px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: clamp(1rem, 2.2vw, 1.35rem);
+  font-style: italic;
+  line-height: 1.5;
+  color: #ffe2a8;
+  text-shadow: 0 0 18px rgba(255, 190, 90, 0.6), 0 2px 6px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  pointer-events: none;
+  animation: prophecy 7s ease-in-out forwards;
+}
+
+@keyframes prophecy {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.storm-line {
+  position: absolute;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #e7b98a;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.storm-line.flowing {
+  color: #ffd27a;
+  text-shadow: 0 0 10px rgba(255, 200, 90, 0.7);
+}
+
+.voice-chip {
+  position: absolute;
+  right: 22px;
+  bottom: 28px;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: rgba(230, 216, 255, 0.55);
+}
+
+.voice-chip.ready {
+  color: #e6d8ff;
+  text-shadow: 0 0 10px #8a5cff;
+}
+
+.voice-chip.dry span::after {
+  content: '  needs spice';
+  color: rgba(236, 220, 191, 0.45);
+}
+
+.voice-cd {
+  grid-column: 1 / -1;
+  height: 3px;
+  background: rgba(230, 216, 255, 0.15);
+}
+
+.voice-fill {
+  height: 100%;
+  background: #b89cff;
+  transform-origin: left;
+}
+
+.foe-tags {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.foe-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+}
+
+.foe-mark {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: 18px;
+  font-weight: 700;
+  color: #f0d080;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.foe-mark.hot {
+  color: #ff5a3c;
+  text-shadow: 0 0 8px rgba(255, 70, 40, 0.8);
+}
+
+.foe-mark.stun {
+  color: #c9b0ff;
+  text-shadow: 0 0 8px #8a5cff;
+}
+
+.foe-bars {
+  position: absolute;
+  top: 0;
+  left: -22px;
+  width: 44px;
+  display: grid;
+  gap: 2px;
+}
+
+.foe-shield,
+.foe-hp {
+  height: 3px;
+  transform-origin: left;
+}
+
+.foe-shield {
+  background: #8fc6ff;
+  box-shadow: 0 0 4px rgba(120, 190, 255, 0.7);
+}
+
+.foe-hp {
+  background: #e0533a;
+}
+
+.m-foe::before {
+  background: #ff5a3c;
+  border-radius: 50%;
+  width: 6px;
+  height: 6px;
+  left: -3px;
+  top: 1px;
+}
+
+.m-carrier::before {
+  background: transparent;
+  border: 2px solid #ff5a3c;
+  transform: rotate(45deg);
+  width: 6px;
+  height: 6px;
+}
+
+.m-carrier span {
+  color: #ff8a6c;
+}
+
+.m-storm::before {
+  width: 16px;
+  left: -8px;
+  height: 6px;
+  top: 1px;
+  border-radius: 3px;
+  background: repeating-linear-gradient(90deg, #a0683a 0 3px, transparent 3px 5px);
+}
