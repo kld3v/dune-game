@@ -4,7 +4,7 @@ import { consume, endFrame, requestLock } from './input'
 import { updateEnv } from './env'
 import { updateFoot } from './player'
 import { updateThopter } from './thopter'
-import { dismount, playerSafe, riderPose, spawnHunter, spawnWild, spawnWorm, updateWorms } from './worms'
+import { debugRide, dismount, playerSafe, riderPose, spawnHunter, spawnWild, spawnWorm, updateWorms } from './worms'
 import { updateThumper } from './thumper'
 import { initFields, planBlow, updateSpice } from './spice'
 import { takeSpice, updateTrip } from './trip'
@@ -278,14 +278,16 @@ export function installDebug() {
     tod: (v: number) => {
       rt.tod = v
     },
-    lure: (dist = 70) => {
+    lure: (dist = 70, size?: number) => {
       const p = rt.player.pos
       const s = findSandSpot(p.x, p.z, dist * 0.8, dist * 1.2, 16, rt.cam.yaw, 0.4)
-      if (s) spawnWorm('lure', new THREE.Vector3(s.x, terrainHeight(s.x, s.z), s.z), 120)
+      if (s) spawnWorm('lure', new THREE.Vector3(s.x, terrainHeight(s.x, s.z), s.z), 120, size)
       return s
     },
     hunter: () => spawnHunter(),
     wild: () => spawnWild(rt.player.pos),
+    grandfather: () => spawnWild(rt.player.pos, 3),
+    ride: (size = 1) => debugRide(size),
     raid: () => debugRaid(),
     storm: () => {
       rt.nextStorm = rt.time

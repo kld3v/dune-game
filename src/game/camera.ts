@@ -53,8 +53,8 @@ function occlusion(target: THREE.Vector3, dx: number, dy: number, dz: number, ma
         const sx = w.spine[i * 3]
         const sy = w.spine[i * 3 + 1]
         const sz = w.spine[i * 3 + 2]
-        if (Math.abs(sx - target.x) > 45 || Math.abs(sz - target.z) > 45) continue
-        const hit = raySphere(target, dx, dy, dz, sx, sy, sz, RADII[i] + 0.6)
+        if (Math.abs(sx - target.x) > 45 * w.size || Math.abs(sz - target.z) > 45 * w.size) continue
+        const hit = raySphere(target, dx, dy, dz, sx, sy, sz, RADII[i] * w.size + 0.6)
         if (hit < best) best = hit
       }
     }
@@ -86,7 +86,7 @@ export function placeCamera(dt: number, camera: THREE.PerspectiveCamera) {
     tx = p.x
     ty = p.y + 2.2
     tz = p.z
-    targetDist = 21
+    targetDist = 21 * Math.pow(rt.ridden ? rt.ridden.size : 1, 0.6)
     k = 6
     pmin = -1.0
     pmax = 0.25

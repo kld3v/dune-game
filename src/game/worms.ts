@@ -7,7 +7,7 @@ import { terrainHeight, rockMask } from './terrain'
 import { TAU, approachAngle, clamp, damp, rand, wrapAngle } from './math'
 import { RADII, ringOf } from './wormShape'
 import { audio } from './audio'
-import { sandBurst, shockRing, wake } from './fx'
+import { curtain, sandBurst, shockRing, wake } from './fx'
 import { destroyThopter, destroyThumper, jolt, killPlayer, panFor, volFor } from './actions'
 import { killFoe } from './combat'
 import { isDown } from './input'
@@ -20,8 +20,26 @@ import { toast } from './ui'
 const DEPTH_DEEP = -R * 2.2
 const DEPTH_SURF = -R * 0.45
 
-export function createWorm(kind: WormKind, x: number, z: number, yaw: number, depth: number): Worm {
-  const cap = Math.ceil(L / SP) + 24
+// Worms come in sizes. Everything about one scales with it: girth, length, how deep it
+// runs, how high it breaches, how far it reaches and how far its rumble carries.
+const deep = (w: Worm) => DEPTH_DEEP * w.size
+const surf = (w: Worm) => DEPTH_SURF * w.size
+
+// Most makers are ordinary; now and then one is a grandfather, old enough to swallow a
+// spice harvester whole.
+function pickSize(kind: WormKind): number {
+  if (rt.phase !== 'playing') return rand(0.8, 1.3)
+  const odds = kind === 'hunter' ? 0.03 : kind === 'wild' ? 0.09 : 0.07
+  if (Math.random() < odds) return rand(2.6, 3.3)
+  return kind === 'hunter' ? rand(0.85, 1.3) : rand(0.6, 1.45)
+}
+
+function announce(w: Worm) {
+  if (w.size > 2 && rt.phase === 'playing') toast('The ground hums. A grandfather worm is moving out there.', 'warn', 6500)
+}
+
+export function createWorm(kind: WormKind, x: number, z: number, yaw: number, depth: number, size = 1): Worm {
+  const cap = Math.ceil((L * size) / SP) + 24
   const path = new Float32Array(cap * 3)
   const fx = Math.sin(yaw)
   const fz = Math.cos(yaw)
@@ -30,16 +48,17 @@ export function createWorm(kind: WormKind, x: number, z: number, yaw: number, de
     const px = x - fx * back
     const pz = z - fz * back
     path[k * 3] = px
-    path[k * 3 + 1] = terrainHeight(px, pz) + depth
+    path[k * 3 + 1] = terrainHeight(px, pz) + depth * size
     path[k * 3 + 2] = pz
   }
   const w: Worm = {
     id: rt.nextId++,
     kind,
+    size,
     state: 'approach',
     st: 0,
     life: 0,
-    head: new THREE.Vector3(x, terrainHeight(x, z) + depth, z),
+    head: new THREE.Vector3(x, terrainHeight(x, z) + depth * size, z),
     yaw,
     speed: 12,
     path,
@@ -136,7 +155,7 @@ function sampleSpine(w: Worm, s: number, out: Float32Array, o: number) {
 }
 
 function sampleAll(w: Worm) {
-  for (let i = 0; i < WORM_RINGS; i++) sampleSpine(w, i * RING_DS, w.spine, i * 3)
+  for (let i = 0; i < WORM_RINGS; i++) sampleSpine(w, i * RING_DS * w.size, w.spine, i * 3)
 }
 
 function setState(w: Worm, s: WormState) {
@@ -145,12 +164,13 @@ function setState(w: Worm, s: WormState) {
 }
 
 function safeHeading(w: Worm, desired: number): number {
+  const reach = 0.5 + 0.5 * w.size
   const offsets = [0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.4, -1.4, 1.9, -1.9, 2.5, -2.5]
   for (const off of offsets) {
     const a = desired + off * w.circleDir
     let ok = true
     for (const dist of [12, 24, 36]) {
-      if (rockMask(w.head.x + Math.sin(a) * dist, w.head.z + Math.cos(a) * dist) > 0.05) {
+      if (rockMask(w.head.x + Math.sin(a) * dist * reach, w.head.z + Math.cos(a) * dist * reach) > 0.05) {
         ok = false
         break
       }
@@ -197,8 +217,9 @@ function eatCheck(w: Worm) {
   tx /= tl
   ty /= tl
   tz /= tl
-  mouthPt.set(w.head.x + tx * R * 0.6, w.head.y + ty * R * 0.6, w.head.z + tz * R * 0.6)
-  const reach = R * (1.0 + 0.45 * w.mouth)
+  const r = R * w.size
+  mouthPt.set(w.head.x + tx * r * 0.6, w.head.y + ty * r * 0.6, w.head.z + tz * r * 0.6)
+  const reach = r * (1.0 + 0.45 * w.mouth)
   if (rt.mode === 'foot' && !rt.player.onRock) {
     const p = rt.player.pos
     if (Math.hypot(p.x - mouthPt.x, p.y + 0.9 - mouthPt.y, p.z - mouthPt.z) < reach) {
@@ -213,7 +234,7 @@ function eatCheck(w: Worm) {
   }
   const th = rt.thumper
   if (th.active && Math.hypot(th.pos.x - mouthPt.x, th.pos.z - mouthPt.z) < reach + 1 &&
-      mouthPt.y < th.pos.y + R * 1.2) {
+      mouthPt.y < th.pos.y + r * 1.2) {
     destroyThumper()
   }
   eatFoes(mouthPt.x, mouthPt.y, mouthPt.z, reach)
@@ -233,19 +254,20 @@ function eatFoes(x: number, y: number, z: number, reach: number) {
 }
 
 function slam(w: Worm, x: number, g: number, z: number) {
-  sandBurst(x, g, z, 1.6, 520)
-  shockRing(x, g, z, 22, 140)
-  audio.crash(volFor(w.head, 450), panFor(x, z))
-  jolt(w.head, 0.9, 260)
+  const k = w.size
+  sandBurst(x, g, z, 1.6 * k, Math.round(520 * Math.min(k, 2)))
+  shockRing(x, g, z, 22 * k, Math.round(140 * Math.min(k, 2)))
+  audio.crash(volFor(w.head, 450 * k), panFor(x, z))
+  jolt(w.head, 0.9 * Math.min(k, 1.5), 260 * k)
   if (rt.phase !== 'playing') return
-  const radius = R * 1.6
+  const radius = R * 1.6 * k
   eatFoes(x, g + 1, z, radius + 1)
   if (rt.mode === 'foot' && !rt.player.onRock) {
     const p = rt.player.pos
-    if (Math.hypot(p.x - x, p.z - z) < radius && p.y < g + R * 2) killPlayer('worm')
+    if (Math.hypot(p.x - x, p.z - z) < radius && p.y < g + R * 2 * k) killPlayer('worm')
   }
   const t = rt.thopter
-  if (t.alive && Math.hypot(t.pos.x - x, t.pos.z - z) < radius + 2 && t.pos.y < g + 6) {
+  if (t.alive && Math.hypot(t.pos.x - x, t.pos.z - z) < radius + 2 && t.pos.y < g + 6 * k) {
     if (rt.mode === 'thopter') killPlayer('thopter')
     else destroyThopter()
   }
@@ -259,15 +281,15 @@ function startBreach(w: Worm) {
   w.breachA.copy(w.head)
   // Parabola from depth D back to depth D. Its length is chosen so the head re-enters the
   // sand, on the way down, exactly on the target.
-  const D = -DEPTH_DEEP
-  w.breachH = rand(32, 42)
+  const D = -deep(w)
+  w.breachH = rand(32, 42) * Math.pow(w.size, 0.85)
   const uT = 0.5 + Math.sqrt(0.25 - D / (4 * (w.breachH + D)))
   w.breachLen = d / uT
-  w.breachDur = clamp(w.breachLen / 9, 3.2, 5.2)
+  w.breachDur = clamp(w.breachLen / 9, 3.2, 5.2) * Math.sqrt(w.size)
   w.splashUp = false
   w.splashDown = false
   setState(w, 'breach')
-  audio.breach(volFor(w.head, 480), panFor(w.head.x, w.head.z))
+  audio.breach(volFor(w.head, 480 * w.size), panFor(w.head.x, w.head.z))
 }
 
 function approach(w: Worm, dt: number) {
@@ -286,7 +308,7 @@ function approach(w: Worm, dt: number) {
       const circle = Math.atan2(dx, dz) + w.circleDir * (Math.PI / 2 + clamp((r - 90) / 40, -0.8, 0.8))
       steer(w, circle, 1.2, dt)
       w.speed = damp(w.speed, r > 160 ? 30 : 16, 0.8, dt)
-      advance(w, w.speed, DEPTH_DEEP, 3, dt)
+      advance(w, w.speed, deep(w), 3, dt)
       w.mouthTarget = 0
       return
     }
@@ -297,8 +319,8 @@ function approach(w: Worm, dt: number) {
   const dist = Math.hypot(dx, dz)
   const desired = w.kind === 'wild' ? w.baseYaw + Math.sin(w.life * 0.17) * 0.5 : Math.atan2(dx, dz)
   steer(w, desired, 1.5, dt)
-  w.speed = damp(w.speed, w.kind === 'wild' ? 15 : w.kind === 'hunter' ? 24 : 26, 0.8, dt)
-  advance(w, w.speed, DEPTH_DEEP, 3, dt)
+  w.speed = damp(w.speed, (w.kind === 'wild' ? 15 : w.kind === 'hunter' ? 24 : 26) * (0.8 + 0.2 * w.size), 0.8, dt)
+  advance(w, w.speed, deep(w), 3, dt)
   w.mouthTarget = 0
 
   if (w.kind === 'wild') {
@@ -306,7 +328,7 @@ function approach(w: Worm, dt: number) {
     return
   }
   const aligned = Math.abs(wrapAngle(desired - w.yaw)) < 0.35
-  if (dist < 42 && dist > 20 && aligned && rockMask(w.target.x, w.target.z) < 0.05) {
+  if (dist < 42 * w.size && dist > 20 * w.size && aligned && rockMask(w.target.x, w.target.z) < 0.05) {
     if (w.kind === 'hunter' && playerSafe()) return
     startBreach(w)
   }
@@ -318,22 +340,22 @@ function breach(w: Worm) {
   const x = w.breachA.x + Math.sin(w.yaw) * s
   const z = w.breachA.z + Math.cos(w.yaw) * s
   const g = terrainHeight(x, z)
-  const D = -DEPTH_DEEP
+  const D = -deep(w)
   const yRel = -D + 4 * (w.breachH + D) * t * (1 - t)
   moveHead(w, x, g + yRel, z)
   w.mouthTarget = t > 0.06 && t < 0.82 ? 1 : 0
-  if (!w.splashUp && yRel > -R) {
+  if (!w.splashUp && yRel > -R * w.size) {
     w.splashUp = true
-    sandBurst(x, g, z, 1.3, 420)
-    audio.crash(volFor(w.head, 420) * 0.8, panFor(x, z))
-    jolt(w.head, 0.6, 220)
+    sandBurst(x, g, z, 1.3 * w.size, Math.round(420 * Math.min(w.size, 2)))
+    audio.crash(volFor(w.head, 420 * w.size) * 0.8, panFor(x, z))
+    jolt(w.head, 0.6 * Math.min(w.size, 1.5), 220 * w.size)
   }
-  if (w.splashUp && !w.splashDown && t > 0.55 && yRel < R * 0.4) {
+  if (w.splashUp && !w.splashDown && t > 0.55 && yRel < R * 0.4 * w.size) {
     w.splashDown = true
     slam(w, x, g, z)
   }
   eatCheck(w)
-  if (t > 0.6 && yRel <= DEPTH_SURF) {
+  if (t > 0.6 && yRel <= surf(w)) {
     setState(w, 'surface')
     if (w.kind === 'hunter') rt.wormsign = 0.55
   }
@@ -347,7 +369,7 @@ function surface(w: Worm, dt: number) {
     const dx = w.head.x - w.target.x
     const dz = w.head.z - w.target.z
     const r = Math.hypot(dx, dz)
-    desired = Math.atan2(dx, dz) + w.circleDir * (Math.PI / 2 + clamp((r - 34) / 20, -0.7, 0.7))
+    desired = Math.atan2(dx, dz) + w.circleDir * (Math.PI / 2 + clamp((r - 34 * w.size) / 20, -0.7, 0.7))
     w.mouthTarget = 0.12 + 0.1 * Math.sin(w.life * 0.7)
   } else if (w.kind === 'hunter') {
     const p = rt.player.pos
@@ -362,7 +384,7 @@ function surface(w: Worm, dt: number) {
   }
   steer(w, desired, rate, dt)
   w.speed = damp(w.speed, speed, 0.7, dt)
-  advance(w, w.speed, DEPTH_SURF, 8, dt)
+  advance(w, w.speed, surf(w), 8, dt)
   eatCheck(w)
   const dur = w.kind === 'lure' ? 24 : w.kind === 'hunter' ? 6 : 26
   if (w.st > dur) {
@@ -375,7 +397,7 @@ function dive(w: Worm, dt: number) {
   w.mouthTarget = 0
   steer(w, w.yaw, 0.4, dt)
   w.speed = damp(w.speed, 15, 0.8, dt)
-  advance(w, w.speed, -R * 3.2, 1.2, dt)
+  advance(w, w.speed, -R * 3.2 * w.size, 1.2, dt)
   // The stalker goes back under and resumes its circling; it never gives up.
   if (w.kind === 'hunter' && w.st > 3) {
     setState(w, 'approach')
@@ -388,8 +410,8 @@ function leave(w: Worm, dt: number) {
   const p = rt.player.pos
   steer(w, Math.atan2(w.head.x - p.x, w.head.z - p.z), 0.5, dt)
   w.speed = damp(w.speed, 22, 0.5, dt)
-  advance(w, w.speed, -R * 3.4, 1.2, dt)
-  if (w.st > 30 || Math.hypot(w.head.x - p.x, w.head.z - p.z) > 380) w.dead = true
+  advance(w, w.speed, -R * 3.4 * w.size, 1.2, dt)
+  if (w.st > 30 || Math.hypot(w.head.x - p.x, w.head.z - p.z) > 380 * Math.max(1, w.size)) w.dead = true
 }
 
 function ridden(w: Worm, dt: number) {
@@ -397,42 +419,62 @@ function ridden(w: Worm, dt: number) {
   if (isDown('KeyW')) target = 32
   if (isDown('KeyS')) target = 9
   if (isDown('ShiftLeft') || isDown('ShiftRight')) target = 46
+  target *= 0.85 + 0.15 * w.size
   w.speed = damp(w.speed, target, 0.9, dt)
-  steer(w, rt.cam.yaw, 0.9, dt)
-  advance(w, w.speed, DEPTH_SURF, 8, dt)
-  w.mouthTarget = target > 40 ? 0.75 : 0.1
+  steer(w, rt.cam.yaw, 0.9 / Math.sqrt(w.size), dt)
+  // The maker rears as the hooks bite, then heaves under you; a surge drives the head up
+  // through the sand.
+  const m = rt.riding.mountT
+  const rear = m < 2.4 ? Math.sin((m / 2.4) * Math.PI) : 0
+  const surge = clamp((w.speed - 30 * (0.85 + 0.15 * w.size)) / 14, 0, 1)
+  const lift = rear * 2.0 + surge * 0.3 + Math.sin(w.life * 0.8) * 0.1
+  advance(w, w.speed, surf(w) + R * w.size * lift, rear > 0 ? 5 : 3, dt)
+  w.mouthTarget = Math.max(rear, target > 40 ? 0.75 : 0.1)
 }
 
 function effects(w: Worm, dt: number) {
   const cam = rt.cam.pos
+  const k = w.size
   const dist = Math.hypot(w.head.x - cam.x, w.head.z - cam.z)
-  const near = clamp(1 - dist / 260, 0, 1)
+  const near = clamp(1 - dist / (260 * Math.sqrt(k)), 0, 1)
   let level = near * near
   if (w.state === 'approach' || w.state === 'leave' || w.state === 'dive') level *= 0.75
   if (w.state === 'breach') level = Math.min(1.3, Math.max(level, near) * 1.25)
   if (w.state === 'ridden') level = 0.5
+  // A grandfather is felt long before it is seen: the ground hums for most of a kilometre.
+  const hum = k > 2 ? clamp(1 - dist / 900, 0, 1) : 0
+  level = Math.max(level, hum * 0.45)
   w.rumble = level
-  const quake = w.state === 'ridden' ? 0.12 : w.state === 'breach' ? near * 0.85 : level * 0.5
+  let quake = w.state === 'ridden' ? 0.12 : w.state === 'breach' ? near * 0.85 : level * 0.5
+  quake = Math.max(quake, hum * 0.22)
+  if (w.state === 'ridden' && rt.riding.mountT < 2.4) quake = Math.max(quake, 0.45)
   if (quake > rt.cam.rumbleTarget) rt.cam.rumbleTarget = quake
 
-  if (dist > 360) return
+  if (dist > 360 * k) return
   const g = terrainHeight(w.head.x, w.head.z)
   const depth = w.head.y - g
   // Underground travel throws up a plume above the head: the sand wave.
-  if ((w.state === 'approach' || w.state === 'leave' || w.state === 'dive') && depth > -R * 3.6) {
-    const n = Math.min(6, Math.floor(w.speed * dt * 9 + Math.random()))
-    wake(w.head.x, g, w.head.z, 5, n)
+  if ((w.state === 'approach' || w.state === 'leave' || w.state === 'dive') && depth > -R * 3.6 * k) {
+    const n = Math.min(6, Math.floor(w.speed * dt * 9 * Math.sqrt(k) + Math.random()))
+    wake(w.head.x, g, w.head.z, 5 * k, n)
   }
   if (w.state === 'surface' || w.state === 'ridden') {
     const n = Math.min(5, Math.floor(w.speed * dt * 7 + Math.random()))
-    wake(w.head.x + Math.sin(w.yaw) * 4, g, w.head.z + Math.cos(w.yaw) * 4, R * 1.1, n)
-    for (let k = 0; k < 2; k++) {
+    wake(w.head.x + Math.sin(w.yaw) * 4 * k, g, w.head.z + Math.cos(w.yaw) * 4 * k, R * 1.1 * k, n)
+    for (let j = 0; j < 2; j++) {
       const i = Math.floor(rand(4, WORM_RINGS * 0.6))
       const sx = w.spine[i * 3]
       const sz = w.spine[i * 3 + 2]
       const gy = terrainHeight(sx, sz)
-      if (Math.abs(w.spine[i * 3 + 1] + RADII[i] * 0.3 - gy) < RADII[i]) wake(sx, gy, sz, RADII[i], 1)
+      const r = RADII[i] * k
+      if (Math.abs(w.spine[i * 3 + 1] + r * 0.3 - gy) < r) wake(sx, gy, sz, r, 1)
     }
+  }
+  // Riding: sheets of sand peel off both flanks of the head, higher the harder you push.
+  if (w.state === 'ridden') {
+    const push = clamp((w.speed - 14) / 30, 0, 1)
+    const n = Math.floor((6 + 30 * push) * dt * 10 + Math.random())
+    curtain(w.head.x, g, w.head.z, w.yaw, R * k, 6 + 14 * push, Math.min(n, 8))
   }
 }
 
@@ -492,7 +534,7 @@ export function updateWorms(dt: number) {
   rt.threatBearing = Math.atan2(bearingX, bearingZ)
 }
 
-export function spawnWorm(kind: WormKind, target: THREE.Vector3, dist: number): Worm | null {
+export function spawnWorm(kind: WormKind, target: THREE.Vector3, dist: number, size = pickSize(kind)): Worm | null {
   if (rt.worms.length >= MAX_WORMS) {
     const victim = rt.worms.find((w) => w !== rt.ridden && (w.state === 'leave' || w.state === 'dive'))
       ?? rt.worms.find((w) => w !== rt.ridden && w.kind === 'wild')
@@ -500,10 +542,11 @@ export function spawnWorm(kind: WormKind, target: THREE.Vector3, dist: number): 
     victim.dead = true
     rt.worms = rt.worms.filter((w) => !w.dead)
   }
+  const far = dist * (size > 2 ? 1.5 : 1)
   for (let i = 0; i < 24; i++) {
     const a = Math.random() * TAU
-    const x = target.x + Math.sin(a) * dist
-    const z = target.z + Math.cos(a) * dist
+    const x = target.x + Math.sin(a) * far
+    const z = target.z + Math.cos(a) * far
     if (rockMask(x, z) > 0.01) continue
     if (i < 16) {
       let blocked = false
@@ -512,15 +555,16 @@ export function spawnWorm(kind: WormKind, target: THREE.Vector3, dist: number): 
       }
       if (blocked) continue
     }
-    const w = createWorm(kind, x, z, Math.atan2(target.x - x, target.z - z), DEPTH_DEEP)
+    const w = createWorm(kind, x, z, Math.atan2(target.x - x, target.z - z), DEPTH_DEEP, size)
     w.target.copy(target)
     rt.worms.push(w)
+    announce(w)
     return w
   }
   return null
 }
 
-export function spawnWild(near: THREE.Vector3) {
+export function spawnWild(near: THREE.Vector3, size?: number) {
   if (rt.worms.length >= MAX_WORMS) return
   for (let i = 0; i < 12; i++) {
     const a = Math.random() * TAU
@@ -529,12 +573,23 @@ export function spawnWild(near: THREE.Vector3) {
     if (rockMask(x, z) > 0.01) continue
     const toward = Math.atan2(near.x - x, near.z - z)
     const yaw = toward + rand(0.25, 0.5) * (Math.random() < 0.5 ? 1 : -1)
-    const w = createWorm('wild', x, z, yaw, DEPTH_DEEP)
+    const w = createWorm('wild', x, z, yaw, DEPTH_DEEP, size ?? pickSize('wild'))
     w.baseYaw = yaw
+    announce(w)
     w.surfaceAt = rand(6, 9)
     rt.worms.push(w)
     return
   }
+}
+
+// Debug: a surfaced worm of the given size, already under you, hooks set.
+export function debugRide(size = 1) {
+  const p = rt.player.pos
+  const yaw = rt.cam.yaw
+  if (rt.worms.length >= MAX_WORMS) rt.worms.shift()
+  const w = createWorm('wild', p.x + Math.sin(yaw) * 40 * size, p.z + Math.cos(yaw) * 40 * size, yaw, DEPTH_SURF, size)
+  rt.worms.push(w)
+  mountWorm(w, 30 * size)
 }
 
 export function spawnHunter() {
@@ -551,7 +606,11 @@ export function findMount(px: number, py: number, pz: number, landing: boolean) 
   let bestD = Infinity
   const i0 = Math.ceil((R * 2) / RING_DS)
   const i1 = Math.floor((L * 0.6) / RING_DS)
+  // Just leapt off: no hooking straight back on, and leave that worm alone for a while.
+  const since = rt.time - rt.riding.offT
+  if (landing && since < 2.5) return null
   for (const w of rt.worms) {
+    if (w.id === rt.riding.offId && since < 8) continue
     const ok = w.state === 'surface' ||
       (w.state === 'breach' && w.st / w.breachDur > 0.85) ||
       (w.state === 'dive' && w.st < 1.5)
@@ -560,17 +619,17 @@ export function findMount(px: number, py: number, pz: number, landing: boolean) 
       const sx = w.spine[i * 3]
       const sy = w.spine[i * 3 + 1]
       const sz = w.spine[i * 3 + 2]
-      const r = RADII[i]
+      const r = RADII[i] * w.size
       const top = sy + r
       const d = Math.hypot(px - sx, pz - sz)
       if (landing) {
         if (d < r * 0.85 && py <= top + 0.8 && py >= top - 2.5 && d < bestD) {
-          best = { w, s: i * RING_DS }
+          best = { w, s: i * RING_DS * w.size }
           bestD = d
         }
       } else if (d < r + 4.5 && Math.abs(py - top) < 9 && d < bestD) {
         if (top < terrainHeight(sx, sz) + 0.8) continue
-        best = { w, s: i * RING_DS }
+        best = { w, s: i * RING_DS * w.size }
         bestD = d
       }
     }
@@ -580,7 +639,9 @@ export function findMount(px: number, py: number, pz: number, landing: boolean) 
 
 export function mountWorm(w: Worm, s: number) {
   rt.ridden = w
-  rt.riderS = clamp(s, R * 2.2, L * 0.35)
+  rt.riderS = clamp(s, R * 2.2 * w.size, L * 0.35 * w.size)
+  sandBurst(w.head.x, terrainHeight(w.head.x, w.head.z), w.head.z, 1.2 * w.size, 380)
+  shockRing(w.head.x, terrainHeight(w.head.x, w.head.z), w.head.z, 18 * w.size, 120)
   setState(w, 'ridden')
   w.kind = 'wild'
   rt.mode = 'worm'
@@ -589,7 +650,8 @@ export function mountWorm(w: Worm, s: number) {
   rt.cam.yaw = w.yaw
   rt.cam.pitch = -0.32
   audio.hook()
-  toast(rt.stats.rides === 1 ? 'Hooks set. The maker is yours. Look where you want to go.' : 'Hooks set.', 'spice', 5200)
+  if (w.size > 2) toast('Hooks set in a grandfather of the desert. Few have ridden one and lived.', 'spice', 6000)
+  else toast(rt.stats.rides === 1 ? 'Hooks set. The maker is yours. Look where you want to go.' : 'Hooks set.', 'spice', 5200)
 }
 
 export function dismount() {
@@ -599,7 +661,11 @@ export function dismount() {
   const rx = -Math.cos(w.yaw)
   const rz = Math.sin(w.yaw)
   const side = rockMask(p.pos.x + rx * 10, p.pos.z + rz * 10) > 0.2 ? -1 : 1
-  p.vel.set(rx * side * 8 + Math.sin(w.yaw) * w.speed * 0.25, 7.5, rz * side * 8 + Math.cos(w.yaw) * w.speed * 0.25)
+  // Leap clear of the flank: the wider the worm, the harder you have to jump.
+  const out = 9 + R * w.size * 0.9
+  p.vel.set(rx * side * out + Math.sin(w.yaw) * w.speed * 0.25, 9, rz * side * out + Math.cos(w.yaw) * w.speed * 0.25)
+  rt.riding.offT = rt.time
+  rt.riding.offId = w.id
   p.grounded = false
   rt.mode = 'foot'
   rt.ridden = null
@@ -612,8 +678,8 @@ const tmpPose = new THREE.Vector3()
 export function riderPose(out: THREE.Vector3): number {
   const w = rt.ridden
   if (!w) return 0
-  const i = ringOf(rt.riderS)
-  out.set(w.spine[i * 3], w.spine[i * 3 + 1] + RADII[i] * 0.97, w.spine[i * 3 + 2])
+  const i = ringOf(rt.riderS / w.size)
+  out.set(w.spine[i * 3], w.spine[i * 3 + 1] + RADII[i] * 0.97 * w.size, w.spine[i * 3 + 2])
   const a = Math.max(0, i - 2) * 3
   const b = Math.min(WORM_RINGS - 1, i + 2) * 3
   tmpPose.set(w.spine[a] - w.spine[b], 0, w.spine[a + 2] - w.spine[b + 2])

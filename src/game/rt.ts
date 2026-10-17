@@ -18,6 +18,7 @@ export const MAX_WORMS = 3
 export interface Worm {
   id: number
   kind: WormKind
+  size: number
   state: WormState
   st: number
   life: number
@@ -242,7 +243,7 @@ export const rt = {
   visualTod: 0,
   flash: { t: 0, x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0, cooldown: 0 },
   prophecyT: 6,
-  riding: { epic: 0, mountT: 99 },
+  riding: { epic: 0, mountT: 99, offT: -99, offId: 0 },
   slowmo: 0,
   presT: 0,
   hitstop: 0,

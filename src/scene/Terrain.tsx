@@ -341,7 +341,7 @@ export function Terrain() {
       }
       const depth = terrainHeight(w.head.x, w.head.z) - w.head.y
       A.set(w.head.x, w.head.z, Math.sin(w.yaw), Math.cos(w.yaw))
-      B.set(clamp(1 - (depth - 8) / 16, 0, 1) * 2.6, 36, WORM_R + 1, 0)
+      B.set(clamp(1 - (depth - 8 * w.size) / (16 * w.size), 0, 1) * 2.6 * Math.sqrt(w.size), 36 * w.size, (WORM_R + 1) * w.size, 0)
     }
     for (let i = 0; i < MAX_FIELDS; i++) {
       const f = rt.fields[i]

@@ -157,14 +157,15 @@ export function Future() {
       const dx = w.target.x - w.head.x
       const dz = w.target.z - w.head.z
       const d = Math.hypot(dx, dz)
-      if (d > 220 || d < 1) continue
+      const k = w.size
+      if (d > 220 * k || d < 1) continue
       const ux = dx / d
       const uz = dz / d
       for (let k = 0; k < 5; k++) {
         const s = Math.random()
-        const x = w.target.x - ux * 42 + ux * 46 * s
-        const z = w.target.z - uz * 42 + uz * 46 * s
-        const y = terrainHeight(x, z) - 6 + 4 * 42 * s * (1 - s)
+        const x = w.target.x - ux * 42 * k + ux * 46 * k * s
+        const z = w.target.z - uz * 42 * k + uz * 46 * k * s
+        const y = terrainHeight(x, z) - 6 * k + 4 * 42 * k * s * (1 - s)
         glow.emit(x, y, z, 0, 0.3, 0, 0.6, 0.35, 1.1 * sight, 0.6 * sight, 2.2 * sight, 0, 0)
       }
     }

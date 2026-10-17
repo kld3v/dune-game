@@ -225,7 +225,7 @@ function writeBody(w: Worm, geo: THREE.BufferGeometry) {
     const bx = ty * nz - tz * ny
     const by = tz * nx - tx * nz
     const bz = tx * ny - ty * nx
-    const r = RADII[i]
+    const r = RADII[i] * w.size
     const dr = DRADII[i]
     const pk = PLATE_K[i]
     const cx = sp[i * 3]
@@ -272,7 +272,7 @@ function writeBody(w: Worm, geo: THREE.BufferGeometry) {
 function bodyAboveGround(w: Worm): boolean {
   const sp = w.spine
   for (let i = 0; i < WORM_RINGS; i += 6) {
-    if (sp[i * 3 + 1] + RADII[i] > terrainHeight(sp[i * 3], sp[i * 3 + 2]) - 0.5) return true
+    if (sp[i * 3 + 1] + RADII[i] * w.size > terrainHeight(sp[i * 3], sp[i * 3 + 2]) - 0.5) return true
   }
   return false
 }
@@ -300,9 +300,10 @@ export function Worms() {
       v.ghostMat.uniforms.uTime.value = rt.time
       const sp = w.spine
       const headY = sp[1]
-      v.mouth.visible = above && headY > terrainHeight(sp[0], sp[2]) - R * 2.2
+      v.mouth.visible = above && headY > terrainHeight(sp[0], sp[2]) - R * 2.2 * w.size
       if (v.mouth.visible) {
         v.mouth.position.set(sp[0], sp[1], sp[2])
+        v.mouth.scale.setScalar(w.size)
         T0.set(sp[0] - sp[6], sp[1] - sp[7], sp[2] - sp[8]).normalize()
         v.mouth.quaternion.setFromUnitVectors(Y, T0)
         for (const p of v.petals) p.rotation.x = w.mouth * 1.15

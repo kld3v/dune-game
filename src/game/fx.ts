@@ -43,6 +43,25 @@ export function wake(x: number, y: number, z: number, spread: number, rate: numb
   }
 }
 
+// Sand peeling off both flanks of a ridden worm's head.
+export function curtain(x: number, y: number, z: number, yaw: number, r: number, lift: number, count: number) {
+  const fx = Math.sin(yaw)
+  const fz = Math.cos(yaw)
+  const rx = -fz
+  const rz = fx
+  for (let i = 0; i < count; i++) {
+    const side = Math.random() < 0.5 ? -1 : 1
+    const along = rand(-r * 0.5, r * 1.5)
+    const out = rand(3, 8) * (0.6 + lift / 20)
+    const [cr, cg, cb] = sandCol()
+    dust.emit(
+      x + rx * side * r * 0.95 - fx * along, y + rand(0, 1.5), z + rz * side * r * 0.95 - fz * along,
+      rx * side * out + fx * rand(2, 6), rand(0.5, 1) * lift, rz * side * out + fz * rand(2, 6),
+      rand(1.4, 2.8), rand(1.5, 4), cr, cg, cb, 0.6, 0.6,
+    )
+  }
+}
+
 export function puff(x: number, y: number, z: number, size = 1, count = 5) {
   for (let i = 0; i < count; i++) {
     const a = Math.random() * TAU
