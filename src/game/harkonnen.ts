@@ -8,6 +8,7 @@ import { toast } from './ui'
 import { panFor } from './actions'
 import { puff } from './fx'
 import { spawnWorm } from './worms'
+import { inCity } from './city'
 
 const CHASE_SPEED = 5.6
 const tmp = new THREE.Vector3()
@@ -407,6 +408,8 @@ function updateCarrier(dt: number) {
 export function updateHarkonnens(dt: number, foeDt: number) {
   if (rt.phase !== 'playing') return
   const alive = rt.foes.reduce((n, f) => n + (f.state !== 'dead' ? 1 : 0), 0)
+  // Arrakeen's walls keep the Harkonnen out: no raids inside the city.
+  if (inCity(rt.player.pos.x, rt.player.pos.z, 200)) rt.nextRaid = Math.max(rt.nextRaid, rt.time + 20)
   if (!rt.carrier.active && rt.time > rt.nextRaid && alive < 3) launchCarrier()
   updateCarrier(dt)
   for (const f of rt.foes) {

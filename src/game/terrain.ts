@@ -57,18 +57,40 @@ export function sandHeight(x: number, z: number): number {
   return base + d1 + d2 - 14
 }
 
-export function rockMask(x: number, z: number): number {
+function naturalRock(x: number, z: number): number {
   const n = vnoise(x * 0.0042, z * 0.0042, 21) * 0.72 + vnoise(x * 0.017, z * 0.017, 22) * 0.28
   return smoothstep(0.62, 0.68, n)
 }
 
+// Arrakeen stands on a levelled plateau of stone: flat inside CITY_R, ramping down to
+// the desert over CITY_EDGE. Mirrored in TERRAIN_GLSL below.
+export const CITY_X = -1500
+export const CITY_Z = 1100
+export const CITY_R = 380
+export const CITY_H = 34
+const CITY_EDGE = 90
+
+export function cityMask(x: number, z: number): number {
+  return 1 - smoothstep(CITY_R, CITY_R + CITY_EDGE, Math.hypot(x - CITY_X, z - CITY_Z))
+}
+
+// Solid ground for gameplay: natural rock and the city plateau. Worms will not cross it.
+export function rockMask(x: number, z: number): number {
+  return Math.max(naturalRock(x, z), cityMask(x, z))
+}
+
 export function terrainHeight(x: number, z: number): number {
   const s = sandHeight(x, z)
-  const r = rockMask(x, z)
-  if (r <= 0) return s
-  let top = 20 + vnoise(x * 0.011, z * 0.011, 23) * 16 + vnoise(x * 0.047, z * 0.047, 24) * 3.2
-  top = Math.max(top, s + 4)
-  return s + (top - s) * r
+  const r = naturalRock(x, z)
+  let h = s
+  if (r > 0) {
+    let top = 20 + vnoise(x * 0.011, z * 0.011, 23) * 16 + vnoise(x * 0.047, z * 0.047, 24) * 3.2
+    top = Math.max(top, s + 4)
+    h = s + (top - s) * r
+  }
+  const c = cityMask(x, z)
+  if (c > 0) h += (CITY_H - h) * c
+  return h
 }
 
 export const TERRAIN_GLSL = /* glsl */ `
@@ -119,15 +141,24 @@ float rockMask(vec2 p) {
   float n = vnoise(p * 0.0042, 21u) * 0.72 + vnoise(p * 0.017, 22u) * 0.28;
   return smoothstep(0.62, 0.68, n);
 }
+float cityMask(vec2 p) {
+  return 1.0 - smoothstep(380.0, 470.0, length(p - vec2(-1500.0, 1100.0)));
+}
 float terrainHeight(vec2 p, float lod, out float rock) {
   float s = sandHeight(p, lod);
   rock = rockMask(p);
+  float h = s;
   if (rock > 0.0) {
     float top = 20.0 + vnoise(p * 0.011, 23u) * 16.0 + vnoise(p * 0.047, 24u) * 3.2 * (1.0 - lod);
     top = max(top, s + 4.0);
-    return s + (top - s) * rock;
+    h = s + (top - s) * rock;
   }
-  return s;
+  float c = cityMask(p);
+  if (c > 0.0) {
+    h += (34.0 - h) * c;
+    rock = max(rock, c);
+  }
+  return h;
 }
 `
 

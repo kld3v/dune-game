@@ -25,10 +25,8 @@ export interface DialogueOption {
 }
 
 export interface Dialogue {
-  sietch: string
-  naib: string
-  standing: string
-  trust: number
+  title: string
+  subtitle: string
   line: string
   options: DialogueOption[]
 }

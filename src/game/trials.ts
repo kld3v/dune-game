@@ -58,6 +58,14 @@ export const TRIALS: Trial[] = [
     grant: () => { rt.spice += 20 },
   },
   {
+    title: 'The city of the spice',
+    goal: 'Sell spice to Ammar in the Arrakeen market (follow the compass)',
+    target: 10,
+    stat: () => rt.stats.spiceSold,
+    reward: '+60 solari',
+    grant: () => { rt.solari += 60 },
+  },
+  {
     title: 'Break the patrol',
     goal: 'Kill Harkonnen soldiers',
     target: 3,
@@ -107,6 +115,14 @@ export const TRIALS: Trial[] = [
   },
 ]
 
+// Saved progress names the trial, so adding trials never shifts where you were.
+export function restoreTrial() {
+  const i = rt.trial.title ? TRIALS.findIndex((t) => t.title === rt.trial.title) : -1
+  if (i >= 0) rt.trial.idx = i
+  rt.trial.title = TRIALS[rt.trial.idx]?.title ?? ''
+  rt.trial.base = currentTrial()?.stat() ?? 0
+}
+
 export function currentTrial() {
   return TRIALS[rt.trial.idx] ?? null
 }
@@ -130,6 +146,7 @@ export function updateTrials(dt: number) {
     rt.trial.doneT = rt.time
     const next = currentTrial()
     rt.trial.base = next ? next.stat() : 0
+    rt.trial.title = next ? next.title : ''
     saveProfile()
     if (next) window.setTimeout(() => toast(`Next trial: ${next.title}. ${next.goal}.`, 'info', 6500), 2500)
   }

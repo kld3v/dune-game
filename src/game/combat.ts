@@ -102,6 +102,7 @@ export function hitPlayer(fromX: number, fromZ: number, dmg: number) {
   const c = rt.combat
   if (c.iframes > 0 || rt.mode !== 'foot' || rt.phase !== 'playing') return false
   dmg *= 1 - 0.5 * power()
+  if (rt.upgrades.shield && rt.shieldOn) dmg *= 0.6
   c.hp -= dmg
   c.hurtT = 0
   c.hurtAt = rt.time

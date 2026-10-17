@@ -308,17 +308,19 @@ export const rt = {
   hintT: 2,
   stats: {
     harvested: 0, rides: 0, doses: 0, deaths: 0, kills: 0, wormKills: 0,
-    rideDist: 0, flowTime: 0, sandwalkDist: 0, prophecies: 0, grandRides: 0, sietchesFound: 0,
+    rideDist: 0, flowTime: 0, sandwalkDist: 0, prophecies: 0, grandRides: 0, sietchesFound: 0, spiceSold: 0,
   },
   progress: { level: 1, xp: 0, frac: 0, dirty: false, saveT: 0, gainAt: -99, levelAt: -99 },
   trust: {} as Record<string, number>,
-  upgrades: { dmg: 1, voice: false, stillsuit: false },
+  upgrades: { dmg: 1, voice: false, stillsuit: false, shield: false, thopter: 1, paracompass: false, rings: 0 },
+  solari: 0,
+  shieldOn: false,
   sietches: [] as Sietch[],
   gifts: {} as Record<string, number>,
   talking: null as string | null,
   allies: [] as Ally[],
   sietchHint: { x: 0, z: 0, until: -99 },
-  trial: { idx: 0, base: 0, doneT: -99 },
+  trial: { idx: 0, base: 0, doneT: -99, title: '' },
   nextId: 1,
 
   env: {

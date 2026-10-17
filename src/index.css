@@ -1070,3 +1070,24 @@ h2 {
   border-radius: 3px;
   background: repeating-linear-gradient(90deg, #a0683a 0 3px, transparent 3px 5px);
 }
+
+.stat-solari {
+  margin-left: 12px;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: rgba(236, 220, 191, 0.7);
+}
+
+.m-city::before {
+  background: transparent;
+  border: 2px solid #f0c27a;
+  width: 7px;
+  height: 7px;
+  left: -5px;
+  box-shadow: 0 0 6px rgba(240, 194, 122, 0.6);
+}
+
+.m-city span {
+  color: #f0c27a;
+  white-space: nowrap;
+}

@@ -6,6 +6,7 @@ import { fieldRadius } from '../game/spice'
 import { currentTrial, trialProgress } from '../game/trials'
 import { titleFor, xpToNext } from '../game/progress'
 import { FOE_HP, SHIELD_MAX, power } from '../game/combat'
+import { CITY_X, CITY_Z } from '../game/terrain'
 
 const HINTS: Record<Mode, [string, string][]> = {
   foot: [
@@ -92,6 +93,7 @@ export function HUD() {
   const stormEl = useRef<HTMLDivElement>(null)
   const voiceChip = useRef<HTMLDivElement>(null)
   const voiceFill = useRef<HTMLDivElement>(null)
+  const solariEl = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     const pool: MarkerEl[] = []
@@ -180,6 +182,12 @@ export function HUD() {
         place(s.x, s.z, 'm-sietch', d < 4000, `${Math.round(d)}m`)
       }
       if (rt.sietchHint.until > rt.time) place(rt.sietchHint.x, rt.sietchHint.z, 'm-hint', true, '?')
+      if (rt.upgrades.paracompass) {
+        for (const s of rt.sietches) {
+          if (!(s.key in rt.trust) && Math.hypot(s.x - p.x, s.z - p.z) < 3000) place(s.x, s.z, 'm-hint', true, '?')
+        }
+      }
+      place(CITY_X, CITY_Z, 'm-city', true, `Arrakeen ${Math.round(Math.hypot(CITY_X - p.x, CITY_Z - p.z))}m`)
       for (const f of rt.foes) {
         if (f.gone || f.state === 'dead') continue
         const alerted = f.state === 'alert' || f.state === 'chase' || f.state === 'attack' || f.state === 'hit'
@@ -192,6 +200,7 @@ export function HUD() {
       for (let i = n; i < pool.length; i++) pool[i].el.style.display = 'none'
 
       if (spiceVal.current) spiceVal.current.textContent = String(Math.floor(rt.spice))
+      setText(solariEl.current, rt.solari > 0 ? `${rt.solari} solari${rt.upgrades.shield ? (rt.shieldOn ? '  ·  shield on' : '  ·  shield off') : ''}` : '')
       const hp = clamp(rt.combat.hp / rt.combat.maxHp, 0, 1)
       if (hpFill.current) {
         hpFill.current.style.width = `${hp * 100}%`
@@ -334,6 +343,7 @@ export function HUD() {
         <div className="stat-spice">
           <span className="stat-label">Spice</span>
           <span className="stat-value" ref={spiceVal}>0</span>
+          <span className="stat-solari" ref={solariEl} />
         </div>
         <div className="bar-row">
           <span className="stat-label">Life</span>
@@ -373,10 +383,8 @@ export function HUD() {
       {dialogue ? (
         <div className="dialogue">
           <div className="dlg-head">
-            <span className="dlg-naib">{dialogue.naib}</span>
-            <span className="dlg-sietch">
-              {dialogue.sietch} · {dialogue.standing} · trust {dialogue.trust}
-            </span>
+            <span className="dlg-naib">{dialogue.title}</span>
+            <span className="dlg-sietch">{dialogue.subtitle}</span>
           </div>
           <p className="dlg-line">{dialogue.line}</p>
           <ol className="dlg-options">

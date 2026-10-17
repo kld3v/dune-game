@@ -18,9 +18,10 @@ import { windSand } from './fx'
 import { updateCombat } from './combat'
 import { debugRaid, planRaid, updateHarkonnens } from './harkonnen'
 import { scheduleStorm, updateStorm } from './storm'
-import { updateTrials } from './trials'
+import { restoreTrial, updateTrials } from './trials'
 import { loadProfile, updateProgress } from './progress'
 import { initSietches, updateSietches } from './sietch'
+import { cityLayout, updateCity } from './city'
 
 const HINTS = [
   'Walk without rhythm. The sand listens. Hold C to sandwalk.',
@@ -36,6 +37,7 @@ let stalkerAnnounced = false
 
 export function initGame() {
   loadProfile()
+  restoreTrial()
   const spot = findRockSpot(0, 0)
   rt.spawn.x = spot.x
   rt.spawn.z = spot.z
@@ -241,6 +243,7 @@ export function update(rawDt: number, camera: THREE.PerspectiveCamera) {
     if (playing && rt.mode === 'worm') updateRiding(dt)
     updateHarkonnens(dt, foeDt)
     updateSietches(dt)
+    updateCity(dt)
     updateStorm(dt)
     updateThumper(dt)
     updateSpice(dt)
@@ -313,6 +316,15 @@ export function installDebug() {
       if (best) rt.trust[best.key] = v
     },
     ride: (size = 1) => debugRide(size),
+    city: () => {
+      const L = cityLayout()
+      const x = L.trader.x + Math.sin(L.trader.yaw) * 2.5
+      const z = L.trader.z + Math.cos(L.trader.yaw) * 2.5
+      rt.player.pos.set(x, terrainHeight(x, z), z)
+      rt.cam.yaw = L.trader.yaw + Math.PI
+      rt.cam.snap = true
+      return { buildings: L.buildings.length, wall: L.wall.length }
+    },
     raid: () => debugRaid(),
     storm: () => {
       rt.nextStorm = rt.time

@@ -65,7 +65,7 @@ function pilot(t: Thopter, dt: number) {
   const str = (isDown('KeyD') || isDown('ArrowRight') ? 1 : 0) - (isDown('KeyA') || isDown('ArrowLeft') ? 1 : 0)
   const lift = (isDown('Space') ? 1 : 0) - (isDown('KeyC') ? 1 : 0)
   t.boost = thr > 0 && (isDown('ShiftLeft') || isDown('ShiftRight'))
-  const fwd = thr * (t.boost ? 72 : 38)
+  const fwd = thr * (t.boost ? 72 : 38) * rt.upgrades.thopter
   t.vel.x = damp(t.vel.x, fx * fwd + rx * str * 18, 1.6, dt)
   t.vel.z = damp(t.vel.z, fz * fwd + rz * str * 18, 1.6, dt)
   t.vel.y = damp(t.vel.y, lift * 17, 2.4, dt)

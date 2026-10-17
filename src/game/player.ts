@@ -111,6 +111,8 @@ export function updateFoot(dt: number) {
   if (p.onRock) rt.wormsign -= 0.15 * dt
   else if (p.grounded && hs > 0.6) rt.wormsign += (p.running ? 0.05 : p.sandwalk ? 0.003 : 0.02) * dt
   else if (p.grounded) rt.wormsign += 0.004 * dt
+  // A Holtzman shield's hum carries through the sand and drives the makers wild.
+  if (rt.upgrades.shield && rt.shieldOn && !p.onRock) rt.wormsign += 0.012 * dt
   if (p.sandwalk && p.grounded && !p.onRock) rt.stats.sandwalkDist += hs * dt
 
   const mount = findMount(p.pos.x, p.pos.y, p.pos.z, false)

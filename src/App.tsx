@@ -17,6 +17,7 @@ import { Carrier } from './scene/Carrier'
 import { Storm } from './scene/Storm'
 import { Future } from './scene/Future'
 import { Sietches } from './scene/Sietches'
+import { City } from './scene/City'
 import { PostFX } from './scene/PostFX'
 import { HUD } from './ui/HUD'
 import { Screens } from './ui/Screens'
@@ -57,6 +58,7 @@ export default function App() {
         <Storm />
         <Future />
         <Sietches />
+        <City />
         <Particles />
         <Visions />
         <PostFX />

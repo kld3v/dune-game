@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { rt, type Foe, type Sietch, type SietchNpc } from './rt'
 import { consume } from './input'
-import { rockMask, terrainHeight } from './terrain'
+import { CITY_R, CITY_X, CITY_Z, rockMask, terrainHeight } from './terrain'
 import { TAU, clamp, damp, dampAngle, pick } from './math'
 import { toast, useUI } from './ui'
 import { audio } from './audio'
@@ -77,7 +77,7 @@ function build(i: number, j: number): Sietch | null {
   const cx = (i + 0.5 + (hash(i, j, 1) - 0.5) * 0.5) * CELL
   const cz = (j + 0.5 + (hash(i, j, 2) - 0.5) * 0.5) * CELL
   const spot = rockNear(cx, cz, 600)
-  if (!spot || Math.hypot(spot.x, spot.z) < 300) return null
+  if (!spot || Math.hypot(spot.x, spot.z) < 300 || Math.hypot(spot.x - CITY_X, spot.z - CITY_Z) < CITY_R + 400) return null
   // Face the gate toward the nearest cliff edge, set back from it, looking out over the sand.
   let bestA = 0
   let bestD = Infinity
@@ -308,10 +308,8 @@ function show(s: Sietch) {
   const t = Math.round(rt.trust[s.key] ?? 0)
   useUI.setState({
     dialogue: {
-      sietch: s.name,
-      naib: s.naib,
-      standing: standing(t),
-      trust: t,
+      title: s.naib,
+      subtitle: `${s.name}  ·  ${standing(t)}  ·  trust ${t}`,
       line,
       options: choices(s).map((c) => ({ label: c.label, enabled: c.ok, note: c.note })),
     },
@@ -438,7 +436,7 @@ export function updateSietches(dt: number) {
   deeds()
   updateAllies(dt)
   if (rt.mode !== 'foot') {
-    if (rt.talking) closeTalk()
+    if (rt.talking && rt.talking !== 'trader') closeTalk()
     return
   }
   let near: Sietch | null = null
@@ -446,6 +444,7 @@ export function updateSietches(dt: number) {
     const n = naibOf(s)
     if (n && Math.hypot(n.x - p.x, n.z - p.z) < TALK_RANGE && found(s)) near = s
   }
+  if (rt.talking === 'trader') return
   if (rt.talking) {
     rt.prompt = ''
     if (!near || near.key !== rt.talking || rt.combat.hurtT < 0.1) {

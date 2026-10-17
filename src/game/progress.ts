@@ -37,6 +37,12 @@ interface Profile {
   trust: Record<string, number>
   gifts: Record<string, number>
   stillsuit: boolean
+  solari: number
+  shield: boolean
+  thopter: number
+  paracompass: boolean
+  rings: number
+  trialTitle: string
 }
 
 export function loadProfile() {
@@ -61,6 +67,13 @@ export function loadProfile() {
   if (p.trust) Object.assign(rt.trust, p.trust)
   if (p.gifts) Object.assign(rt.gifts, p.gifts)
   rt.upgrades.stillsuit = !!p.stillsuit
+  rt.solari = Math.max(0, Math.floor(p.solari ?? 0))
+  rt.upgrades.shield = !!p.shield
+  rt.shieldOn = rt.upgrades.shield
+  rt.upgrades.thopter = Math.max(1, p.thopter ?? 1)
+  rt.upgrades.paracompass = !!p.paracompass
+  rt.upgrades.rings = Math.max(0, Math.floor(p.rings ?? 0))
+  rt.trial.title = p.trialTitle ?? ''
 }
 
 export function saveProfile() {
@@ -77,6 +90,12 @@ export function saveProfile() {
     trust: rt.trust,
     gifts: rt.gifts,
     stillsuit: rt.upgrades.stillsuit,
+    solari: rt.solari,
+    shield: rt.upgrades.shield,
+    thopter: rt.upgrades.thopter,
+    paracompass: rt.upgrades.paracompass,
+    rings: rt.upgrades.rings,
+    trialTitle: rt.trial.title,
   }
   try {
     localStorage.setItem(KEY, JSON.stringify(p))
