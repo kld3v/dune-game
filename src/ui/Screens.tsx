@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useUI } from '../game/ui'
 import { rt } from '../game/rt'
 import { resumeGame, rise, startGame, toggleMute, toggleShake } from '../game/sim'
+import { resetProfile } from '../game/progress'
 
 const CONTROLS: [string, string][] = [
   ['WASD + mouse', 'walk and look'],
@@ -84,6 +85,14 @@ export function Screens() {
           <button className="cta" onClick={resumeGame}>Return to the sand</button>
           <button className="ghost" onClick={toggleMute}>{muted ? 'Sound off' : 'Sound on'}</button>
           <button className="ghost" onClick={toggleShake}>{shake ? 'Screen shake on' : 'Screen shake off'}</button>
+          <button
+            className="ghost"
+            onClick={() => {
+              if (window.confirm('Forget your level, trials and Fremen trust, and start over?')) resetProfile()
+            }}
+          >
+            Start over
+          </button>
           <Controls />
         </div>
       </div>

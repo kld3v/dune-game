@@ -18,6 +18,21 @@ export interface Vision {
   size: number
 }
 
+export interface DialogueOption {
+  label: string
+  enabled: boolean
+  note?: string
+}
+
+export interface Dialogue {
+  sietch: string
+  naib: string
+  standing: string
+  trust: number
+  line: string
+  options: DialogueOption[]
+}
+
 interface UIState {
   phase: Phase
   mode: Mode
@@ -29,6 +44,7 @@ interface UIState {
   deathReason: string
   voiceAt: number
   prophecy: { id: number; text: string } | null
+  dialogue: Dialogue | null
 }
 
 export const useUI = create<UIState>(() => ({
@@ -42,6 +58,7 @@ export const useUI = create<UIState>(() => ({
   deathReason: '',
   voiceAt: 0,
   prophecy: null,
+  dialogue: null,
 }))
 
 // A prophecy is a vision that matters: shown centred and long enough to read.

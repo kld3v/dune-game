@@ -19,6 +19,8 @@ import { updateCombat } from './combat'
 import { debugRaid, planRaid, updateHarkonnens } from './harkonnen'
 import { scheduleStorm, updateStorm } from './storm'
 import { updateTrials } from './trials'
+import { loadProfile, updateProgress } from './progress'
+import { initSietches, updateSietches } from './sietch'
 
 const HINTS = [
   'Walk without rhythm. The sand listens. Hold C to sandwalk.',
@@ -33,11 +35,13 @@ let nextWild = 90
 let stalkerAnnounced = false
 
 export function initGame() {
+  loadProfile()
   const spot = findRockSpot(0, 0)
   rt.spawn.x = spot.x
   rt.spawn.z = spot.z
   rt.player.pos.set(spot.x, terrainHeight(spot.x, spot.z), spot.z)
   placeThopterNear(spot.x, spot.z)
+  initSietches()
   initFields(spot.x, spot.z)
   const f = rt.fields[0]
   if (f) rt.cam.yaw = Math.atan2(f.x - spot.x, f.z - spot.z)
@@ -228,7 +232,7 @@ export function update(rawDt: number, camera: THREE.PerspectiveCamera) {
   if (playing) {
     if (consume('KeyM')) toggleMute()
     if (consume('KeyF')) takeSpice()
-    if (rt.mode === 'foot') updateFoot(dt)
+    if (rt.mode === 'foot' && !rt.talking) updateFoot(dt)
     updateCombat(dt)
   }
   if (live) {
@@ -236,6 +240,7 @@ export function update(rawDt: number, camera: THREE.PerspectiveCamera) {
     updateWorms(wormDt)
     if (playing && rt.mode === 'worm') updateRiding(dt)
     updateHarkonnens(dt, foeDt)
+    updateSietches(dt)
     updateStorm(dt)
     updateThumper(dt)
     updateSpice(dt)
@@ -243,6 +248,7 @@ export function update(rawDt: number, camera: THREE.PerspectiveCamera) {
     if (playing) {
       updateThreats(dt)
       updateTrials(dt)
+      updateProgress(dt)
     }
     if (rt.phase === 'title') updateTitle(dt)
     const c = rt.cam.pos
@@ -287,6 +293,25 @@ export function installDebug() {
     hunter: () => spawnHunter(),
     wild: () => spawnWild(rt.player.pos),
     grandfather: () => spawnWild(rt.player.pos, 3),
+    sietch: () => {
+      const p = rt.player.pos
+      let best = rt.sietches[0]
+      for (const s of rt.sietches) if (Math.hypot(s.x - p.x, s.z - p.z) < Math.hypot(best.x - p.x, best.z - p.z)) best = s
+      if (!best) return null
+      const n = best.npcs[0]
+      const x = n.x + Math.sin(best.yaw) * 3
+      const z = n.z + Math.cos(best.yaw) * 3
+      rt.player.pos.set(x, terrainHeight(x, z), z)
+      rt.cam.yaw = best.yaw + Math.PI
+      rt.cam.snap = true
+      return { name: best.name, key: best.key, naib: best.naib, sietches: rt.sietches.length }
+    },
+    trust: (v: number) => {
+      const p = rt.player.pos
+      let best = rt.sietches[0]
+      for (const s of rt.sietches) if (Math.hypot(s.x - p.x, s.z - p.z) < Math.hypot(best.x - p.x, best.z - p.z)) best = s
+      if (best) rt.trust[best.key] = v
+    },
     ride: (size = 1) => debugRide(size),
     raid: () => debugRaid(),
     storm: () => {

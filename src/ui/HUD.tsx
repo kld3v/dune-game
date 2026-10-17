@@ -4,6 +4,7 @@ import { useUI } from '../game/ui'
 import { bearingOf, clamp, wrap180, yawToBearing } from '../game/math'
 import { fieldRadius } from '../game/spice'
 import { currentTrial, trialProgress } from '../game/trials'
+import { titleFor, xpToNext } from '../game/progress'
 
 const HINTS: Record<Mode, [string, string][]> = {
   foot: [
@@ -61,6 +62,7 @@ export function HUD() {
   const toasts = useUI((s) => s.toasts)
   const visions = useUI((s) => s.visions)
   const muted = useUI((s) => s.muted)
+  const dialogue = useUI((s) => s.dialogue)
 
   const strip = useRef<HTMLDivElement>(null)
   const markers = useRef<HTMLDivElement>(null)
@@ -75,6 +77,9 @@ export function HUD() {
   const clock = useRef<HTMLDivElement>(null)
   const fps = useRef<HTMLDivElement>(null)
   const hpFill = useRef<HTMLDivElement>(null)
+  const xpFill = useRef<HTMLDivElement>(null)
+  const lvNum = useRef<HTMLSpanElement>(null)
+  const lvTitle = useRef<HTMLSpanElement>(null)
   const trialName = useRef<HTMLSpanElement>(null)
   const trialGoal = useRef<HTMLSpanElement>(null)
 
@@ -135,6 +140,12 @@ export function HUD() {
         const d = Math.hypot(w.head.x - p.x, w.head.z - p.z)
         if (d < 320) place(w.head.x, w.head.z, 'm-worm', w.kind === 'hunter', `${Math.round(d)}m`)
       }
+      for (const s of rt.sietches) {
+        if (!(s.key in rt.trust)) continue
+        const d = Math.hypot(s.x - p.x, s.z - p.z)
+        place(s.x, s.z, 'm-sietch', d < 4000, `${Math.round(d)}m`)
+      }
+      if (rt.sietchHint.until > rt.time) place(rt.sietchHint.x, rt.sietchHint.z, 'm-hint', true, '?')
       for (let i = n; i < pool.length; i++) pool[i].el.style.display = 'none'
 
       if (spiceVal.current) spiceVal.current.textContent = String(Math.floor(rt.spice))
@@ -146,6 +157,13 @@ export function HUD() {
       const trial = currentTrial()
       const setText = (el: HTMLElement | null, s: string) => {
         if (el && el.textContent !== s) el.textContent = s
+      }
+      const g = rt.progress
+      setText(lvNum.current, `LV ${g.level}`)
+      setText(lvTitle.current, titleFor(g.level))
+      if (xpFill.current) {
+        xpFill.current.style.width = `${clamp(g.xp / xpToNext(g.level), 0, 1) * 100}%`
+        xpFill.current.classList.toggle('pulse', rt.time - g.gainAt < 0.6)
       }
       setText(trialName.current, trial ? trial.title : 'Trials complete')
       setText(
@@ -196,6 +214,10 @@ export function HUD() {
         ))}
       </div>
       <div className="stats">
+        <div className="level-row">
+          <span className="lv" ref={lvNum} />
+          <span className="lv-title" ref={lvTitle} />
+        </div>
         <div className="stat-spice">
           <span className="stat-label">Spice</span>
           <span className="stat-value" ref={spiceVal}>0</span>
@@ -204,6 +226,12 @@ export function HUD() {
           <span className="stat-label">Life</span>
           <div className="bar bar-life">
             <div className="bar-fill" ref={hpFill} />
+          </div>
+        </div>
+        <div className="bar-row">
+          <span className="stat-label">XP</span>
+          <div className="bar bar-xp">
+            <div className="bar-fill" ref={xpFill} />
           </div>
         </div>
         <div className="bar-row">
@@ -229,6 +257,27 @@ export function HUD() {
         <div className="muted">{muted ? 'Sound off (M)' : ''}</div>
         <div ref={fps} />
       </div>
+      {dialogue ? (
+        <div className="dialogue">
+          <div className="dlg-head">
+            <span className="dlg-naib">{dialogue.naib}</span>
+            <span className="dlg-sietch">
+              {dialogue.sietch} · {dialogue.standing} · trust {dialogue.trust}
+            </span>
+          </div>
+          <p className="dlg-line">{dialogue.line}</p>
+          <ol className="dlg-options">
+            {dialogue.options.map((o, i) => (
+              <li key={o.label} className={o.enabled ? '' : 'off'}>
+                <kbd>{i + 1}</kbd>
+                <span>{o.label}</span>
+                {o.note ? <span className="dlg-note">{o.note}</span> : null}
+              </li>
+            ))}
+          </ol>
+          <div className="dlg-foot">Number keys to choose · E to leave</div>
+        </div>
+      ) : null}
       {prompt ? (
         <div className="prompt">
           <kbd>{key}</kbd>

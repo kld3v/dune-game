@@ -696,3 +696,137 @@ h2 {
   line-height: 1.35;
   color: rgba(236, 220, 191, 0.82);
 }
+
+.level-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.lv {
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  color: #f0c27a;
+}
+
+.lv-title {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: rgba(236, 220, 191, 0.75);
+}
+
+.bar-xp .bar-fill {
+  background: linear-gradient(90deg, #b07a2a, #f0c27a);
+}
+
+.bar-xp .bar-fill.pulse {
+  box-shadow: 0 0 10px #f0c27a;
+}
+
+.m-sietch::before {
+  background: transparent;
+  border: 2px solid #9fd0ff;
+  border-radius: 3px 3px 0 0;
+  width: 5px;
+  height: 6px;
+  box-shadow: 0 0 6px rgba(120, 190, 255, 0.6);
+}
+
+.m-sietch span {
+  color: #9fd0ff;
+}
+
+.m-hint::before {
+  display: none;
+}
+
+.m-hint span {
+  top: -2px;
+  font-size: 14px;
+  color: #9fd0ff;
+  text-shadow: 0 0 8px #4aa0ff;
+}
+
+.dialogue {
+  position: absolute;
+  left: 50%;
+  bottom: 150px;
+  transform: translateX(-50%);
+  width: min(580px, calc(100vw - 32px));
+  padding: 16px 18px 12px;
+  background: rgba(14, 10, 7, 0.84);
+  border: 1px solid rgba(236, 220, 191, 0.16);
+  backdrop-filter: blur(6px);
+}
+
+.dlg-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.dlg-naib {
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  color: #f0c27a;
+}
+
+.dlg-sietch {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: rgba(236, 220, 191, 0.65);
+}
+
+.dlg-line {
+  margin: 10px 0 12px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  font-style: italic;
+  color: #efe3c8;
+}
+
+.dlg-options {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dlg-options li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 0.86rem;
+  color: #e9dcc0;
+}
+
+.dlg-options li.off {
+  color: rgba(236, 220, 191, 0.38);
+}
+
+.dlg-options kbd {
+  min-width: 1.4em;
+  text-align: center;
+}
+
+.dlg-note {
+  margin-left: auto;
+  padding-left: 12px;
+  font-size: 0.72rem;
+  text-align: right;
+  color: rgba(159, 208, 255, 0.85);
+}
+
+.dlg-options li.off .dlg-note {
+  color: rgba(236, 220, 191, 0.4);
+}
+
+.dlg-foot {
+  margin-top: 10px;
+  font-size: 0.7rem;
+  color: rgba(236, 220, 191, 0.5);
+}

@@ -16,6 +16,7 @@ import { Harkonnens } from './scene/Harkonnens'
 import { Carrier } from './scene/Carrier'
 import { Storm } from './scene/Storm'
 import { Future } from './scene/Future'
+import { Sietches } from './scene/Sietches'
 import { PostFX } from './scene/PostFX'
 import { HUD } from './ui/HUD'
 import { Screens } from './ui/Screens'
@@ -55,6 +56,7 @@ export default function App() {
         <Carrier />
         <Storm />
         <Future />
+        <Sietches />
         <Particles />
         <Visions />
         <PostFX />

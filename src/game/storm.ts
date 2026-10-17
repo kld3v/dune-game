@@ -84,7 +84,7 @@ export function updateStorm(dt: number) {
 
   if (!s.flowing) {
     const shelter = rt.mode === 'foot' && rt.player.onRock ? 0.5 : 1
-    rt.combat.hp -= (inThopter ? 9 : 7) * s.inside * shelter * dt
+    rt.combat.hp -= (inThopter ? 9 : 7) * s.inside * shelter * (rt.upgrades.stillsuit ? 0.5 : 1) * dt
     rt.combat.hurtT = 0
     if (rt.combat.hp <= 0) killPlayer('storm')
   }

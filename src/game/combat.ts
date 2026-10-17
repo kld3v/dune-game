@@ -224,6 +224,11 @@ export function updateCombat(dt: number) {
   c.hurtT += dt
   c.voiceCD = Math.max(0, c.voiceCD - dt)
   if (c.hurtT > 6 && c.hp < c.maxHp) c.hp = Math.min(c.maxHp, c.hp + 7 * dt)
+  if (rt.talking) {
+    c.attacking = false
+    consume('Mouse0')
+    return
+  }
   if (rt.mode !== 'foot' || rt.phase !== 'playing') {
     c.attacking = false
     consume('Mouse0')

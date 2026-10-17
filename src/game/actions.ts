@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { rt } from './rt'
 import { audio } from './audio'
 import { releaseLock } from './input'
-import { toast } from './ui'
+import { toast, useUI } from './ui'
 import { clamp, TAU } from './math'
 import { rockMask, terrainHeight } from './terrain'
 import { sandBurst } from './fx'
@@ -107,6 +107,9 @@ export function respawn() {
   rt.worms = []
   rt.foes = []
   rt.carrier.active = false
+  rt.allies = []
+  rt.talking = null
+  useUI.setState({ dialogue: null })
   rt.nextRaid = rt.time + 60
   placeThopterNear(x, z)
   rt.deathReason = ''

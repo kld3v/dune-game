@@ -629,6 +629,17 @@ class AudioEngine {
     this.noiseBurst(t, 3.6, 'highpass', 2500, 0.7, vol * 0.18, 0.5, 3, out)
   }
 
+  levelUp() {
+    const ctx = this.ctx
+    if (!ctx) return
+    const t = ctx.currentTime
+    const out = this.dest(0, 0.6)
+    const notes = [293.66, 369.99, 440, 587.33, 739.99]
+    notes.forEach((f, i) => this.tone(t + i * 0.09, 'triangle', f, f, 1.6, 0.05, 0.004, 1.4, out))
+    this.tone(t, 'sine', 73.4, 73.4, 2.4, 0.22, 0.05, 2.2, out)
+    this.noiseBurst(t + 0.35, 1.4, 'highpass', 6000, 0.7, 0.05, 0.2, 1.1, out)
+  }
+
   hook() {
     const ctx = this.ctx
     if (!ctx) return

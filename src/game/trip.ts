@@ -1,4 +1,4 @@
-import { rt } from './rt'
+import { rt, type Sietch } from './rt'
 import { audio } from './audio'
 import { prophecy, toast, vision } from './ui'
 import { bearingOf, damp, pick, rand, smoothstep } from './math'
@@ -56,26 +56,50 @@ export function takeSpice() {
 
 // Prescience tells the truth: every line here is about something the game has already
 // scheduled to happen.
-function foretell(): string | null {
-  const out: string[] = []
+export function foretell(): string | null {
+  const out: [string, (() => void)?][] = []
   const p = rt.player.pos
   const blowIn = rt.nextBlow - rt.time
   if (blowIn > 0 && blowIn < 90) {
-    out.push(`Spice will bloom at ${Math.round(bearingOf(rt.nextBlowPos.x - p.x, rt.nextBlowPos.z - p.z))}°. ${when(blowIn)}.`)
+    out.push([`Spice will bloom at ${Math.round(bearingOf(rt.nextBlowPos.x - p.x, rt.nextBlowPos.z - p.z))}°. ${when(blowIn)}.`])
   }
   const raidIn = rt.nextRaid - rt.time
   if (!rt.carrier.active && raidIn > 0 && raidIn < 90) {
-    out.push(`Black ships will come down to the ${dirName(rt.nextRaidPos.x, rt.nextRaidPos.z)}. ${when(raidIn)}.`)
+    out.push([`Black ships will come down to the ${dirName(rt.nextRaidPos.x, rt.nextRaidPos.z)}. ${when(raidIn)}.`])
   }
   const stormIn = rt.nextStorm - rt.time
   if (!rt.storm.active && stormIn > 0 && stormIn < 120) {
     const from = DIRS[Math.round(((-rt.nextStormDir * 180) / Math.PI + 180 + 720) % 360 / 45) % 8]
-    out.push(`The sky will turn to sand from the ${from}. ${when(stormIn)}.`)
+    out.push([`The sky will turn to sand from the ${from}. ${when(stormIn)}.`])
   }
-  if (rt.wormsign > 0.6) out.push('The maker circles closer. It hears your heart.')
+  if (rt.wormsign > 0.6) out.push(['The maker circles closer. It hears your heart.'])
   const near = rt.foes.filter((f) => f.state !== 'dead' && Math.hypot(f.pos.x - p.x, f.pos.z - p.z) < 120).length
-  if (near > 0) out.push(near === 1 ? 'One Harkonnen heart beats nearby. It will stop.' : `${near} Harkonnen hearts beat nearby. They will stop.`)
-  return out.length ? pick(out) : null
+  if (near > 0) out.push([near === 1 ? 'One Harkonnen heart beats nearby. It will stop.' : `${near} Harkonnen hearts beat nearby. They will stop.`])
+  // The way to the hidden people, until you have found them.
+  let hidden: Sietch | null = null
+  let hd = Infinity
+  for (const s of rt.sietches) {
+    if (s.key in rt.trust) continue
+    const d = Math.hypot(s.x - p.x, s.z - p.z)
+    if (d < hd) {
+      hd = d
+      hidden = s
+    }
+  }
+  if (hidden && hd < 2600) {
+    const h = hidden
+    const hint: [string, () => void] = [`The hidden ones live in the rock to the ${dirName(h.x, h.z)}.`, () => {
+      rt.sietchHint.x = h.x
+      rt.sietchHint.z = h.z
+      rt.sietchHint.until = rt.time + 150
+    }]
+    out.push(hint)
+    if (rt.stats.sietchesFound === 0) out.push(hint)
+  }
+  if (!out.length) return null
+  const [text, then] = pick(out)
+  then?.()
+  return text
 }
 
 function inCombat() {

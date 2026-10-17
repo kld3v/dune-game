@@ -646,6 +646,7 @@ export function mountWorm(w: Worm, s: number) {
   w.kind = 'wild'
   rt.mode = 'worm'
   rt.stats.rides++
+  if (w.size > 2) rt.stats.grandRides++
   rt.wormsign = 0
   rt.cam.yaw = w.yaw
   rt.cam.pitch = -0.32
