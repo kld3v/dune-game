@@ -79,8 +79,10 @@ export function updateEnv(dt: number) {
   const speed = e0 < -0.1 ? 2.2 : 1
   if (rt.phase === 'playing') rt.tod = (rt.tod + (dt / rt.dayLength) * speed) % 1
 
-  sunDirFor(rt.tod, env.sunDir)
-  const th = (rt.tod - 0.25) * TAU
+  // What you see can run ahead of the clock: deep spice trips race through days.
+  const tod = rt.tod + rt.visualTod
+  sunDirFor(tod, env.sunDir)
+  const th = (tod - 0.25) * TAU
   env.moonDir.set(Math.cos(th + Math.PI + 0.35), Math.sin(th + Math.PI + 0.35) * 0.85, 0.3).normalize()
   env.moon2Dir.set(Math.cos(th + Math.PI - 0.6) * 0.95, Math.sin(th + Math.PI - 0.6) * 0.7, -0.45).normalize()
   if (env.moonDir.y < 0.12) env.moonDir.y = 0.12
@@ -120,4 +122,22 @@ export function updateEnv(dt: number) {
     tmp.setRGB(0.55, 0.65, 1.0)
     env.lightCol.lerp(tmp, tr * 0.35)
   }
+
+  // Inside a Coriolis storm the world goes brown and dark, lit by lightning.
+  const st = rt.storm.inside
+  if (st > 0.001) {
+    env.horizon.lerp(STORM_HOR, st * 0.9)
+    env.zenith.lerp(STORM_ZEN, st * 0.85)
+    env.lightIntensity *= 1 - 0.7 * st
+    env.hemiIntensity *= 1 - 0.35 * st
+  }
+  const bolt = rt.storm.lightning
+  if (bolt > 0.01) {
+    env.hemiIntensity += bolt * 2.5
+    env.horizon.lerp(BOLT, bolt * 0.35)
+  }
 }
+
+const STORM_HOR = new THREE.Color('#6a4426')
+const STORM_ZEN = new THREE.Color('#2e1e12')
+const BOLT = new THREE.Color('#d8d4ff')

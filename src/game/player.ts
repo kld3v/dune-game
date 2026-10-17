@@ -7,6 +7,7 @@ import { boardThopter, callThopter } from './thopter'
 import { plantThumper } from './thumper'
 import { audio } from './audio'
 import { puff } from './fx'
+import { power } from './combat'
 
 const MAX_SLOPE = 1.6 // rise over run; dune slip faces are ~0.9, rock cliffs block
 
@@ -30,7 +31,9 @@ export function updateFoot(dt: number) {
   }
   p.running = len > 0 && (isDown('ShiftLeft') || isDown('ShiftRight'))
   p.sandwalk = len > 0 && !p.running && isDown('KeyC')
-  const speed = len === 0 ? 0 : p.running ? 9.5 : p.sandwalk ? 1.9 : 5.2
+  const swing = rt.combat.attacking ? 0.25 : 1
+  const spiced = 1 + 0.3 * power()
+  const speed = (len === 0 ? 0 : p.running ? 9.5 : p.sandwalk ? 1.9 : 5.2) * swing * spiced
   const k = p.grounded ? 12 : 2.5
   p.vel.x = damp(p.vel.x, ix * speed, k, dt)
   p.vel.z = damp(p.vel.z, iz * speed, k, dt)
@@ -91,7 +94,7 @@ export function updateFoot(dt: number) {
 
   const hs = Math.hypot(p.vel.x, p.vel.z)
   p.speed = hs
-  if (hs > 0.4) p.yaw = dampAngle(p.yaw, Math.atan2(p.vel.x, p.vel.z), 10, dt)
+  if (hs > 0.4 && !rt.combat.attacking) p.yaw = dampAngle(p.yaw, Math.atan2(p.vel.x, p.vel.z), 10, dt)
   p.walkPhase += hs * dt * 1.25
 
   if (p.grounded && hs > 0.6) {
@@ -103,9 +106,12 @@ export function updateFoot(dt: number) {
     }
   }
 
-  // Rhythm on open sand draws the maker. Sandwalking (C) barely registers.
-  if (p.grounded && !p.onRock && hs > 0.6) rt.wormsign += (p.running ? 0.035 : p.sandwalk ? 0.002 : 0.012) * dt
-  else rt.wormsign -= (p.onRock ? 0.15 : 0.04) * dt
+  // Rhythm on open sand draws the maker; even standing still it slowly finds you.
+  // Sandwalking (C) barely registers. Only rock is truly quiet.
+  if (p.onRock) rt.wormsign -= 0.15 * dt
+  else if (p.grounded && hs > 0.6) rt.wormsign += (p.running ? 0.05 : p.sandwalk ? 0.003 : 0.02) * dt
+  else if (p.grounded) rt.wormsign += 0.004 * dt
+  if (p.sandwalk && p.grounded && !p.onRock) rt.stats.sandwalkDist += hs * dt
 
   const mount = findMount(p.pos.x, p.pos.y, p.pos.z, false)
   const t = rt.thopter

@@ -134,3 +134,30 @@ export function windSand(cx: number, cz: number, groundY: (x: number, z: number)
     )
   }
 }
+
+// Holtzman shield sparks: a burst of cold blue-white light.
+export function sparks(x: number, y: number, z: number, count: number) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * TAU
+    const e = rand(-0.4, 1.2)
+    const sp = rand(3, 9)
+    glow.emit(
+      x, y, z,
+      Math.cos(a) * sp, e * sp, Math.sin(a) * sp,
+      rand(0.25, 0.6), rand(0.08, 0.2), 1.2, 1.8, 3.2, 0.6, 3,
+    )
+  }
+}
+
+// The Voice: a ring of violet light racing out across the sand.
+export function voiceRing(x: number, y: number, z: number) {
+  for (let i = 0; i < 220; i++) {
+    const a = (i / 220) * TAU
+    const sp = rand(20, 26)
+    glow.emit(
+      x + Math.cos(a), y + rand(-0.4, 0.8), z + Math.sin(a),
+      Math.cos(a) * sp, rand(0, 1.5), Math.sin(a) * sp,
+      rand(0.7, 1.0), rand(0.5, 1.1), 1.4, 0.8, 3, 0, 1.6,
+    )
+  }
+}

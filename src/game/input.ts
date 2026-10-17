@@ -15,6 +15,7 @@ export const input = {
 const PREVENT = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'])
 let canvasEl: HTMLElement | null = null
 let ignoreUntil = 0
+let dragDist = 0
 
 export function initInput(canvas: HTMLElement, hooks: { onUnlock: () => void; onEscape: () => void }) {
   if (canvasEl) return
@@ -37,17 +38,29 @@ export function initInput(canvas: HTMLElement, hooks: { onUnlock: () => void; on
   document.addEventListener('mousemove', (e) => {
     if (!input.locked && !input.dragging) return
     if (performance.now() < ignoreUntil) return
+    if (input.dragging) dragDist += Math.abs(e.movementX) + Math.abs(e.movementY)
     input.mdx += clamp(e.movementX, -120, 120)
     input.mdy += clamp(e.movementY, -120, 120)
   })
 
-  // Fallback when pointer lock is unavailable: drag to look.
-  canvas.addEventListener('mousedown', () => {
-    if (!input.locked) input.dragging = true
+  // Mouse buttons arrive as 'Mouse0' (left) and 'Mouse2' (right). When the pointer is
+  // locked a press is a press; without the lock the left button drags to look, and only a
+  // click that barely moved counts as a press.
+  canvas.addEventListener('mousedown', (e) => {
+    if (input.locked) {
+      input.pressed.add('Mouse' + e.button)
+      input.down.add('Mouse' + e.button)
+    } else {
+      input.dragging = true
+      dragDist = 0
+    }
   })
-  window.addEventListener('mouseup', () => {
+  window.addEventListener('mouseup', (e) => {
+    if (!input.locked && input.dragging && dragDist < 5) input.pressed.add('Mouse' + e.button)
+    input.down.delete('Mouse' + e.button)
     input.dragging = false
   })
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault())
 
   document.addEventListener('pointerlockchange', () => {
     const was = input.locked

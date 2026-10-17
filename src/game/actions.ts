@@ -4,7 +4,7 @@ import { audio } from './audio'
 import { releaseLock } from './input'
 import { toast } from './ui'
 import { clamp, TAU } from './math'
-import { findRockSpot, rockMask, terrainHeight } from './terrain'
+import { rockMask, terrainHeight } from './terrain'
 import { sandBurst } from './fx'
 
 export function panFor(x: number, z: number): number {
@@ -28,7 +28,7 @@ export function jolt(p: { x: number; z: number }, strength: number, radius: numb
   rt.cam.impulse = Math.min(1.2, rt.cam.impulse + strength * k)
 }
 
-export function killPlayer(reason: 'worm' | 'thopter') {
+export function killPlayer(reason: 'worm' | 'thopter' | 'harkonnen' | 'storm') {
   if (rt.phase !== 'playing') return
   rt.phase = 'dead'
   rt.deathReason = reason
@@ -85,27 +85,30 @@ export function placeThopterNear(x: number, z: number) {
   t.fold = 1
 }
 
+// Death sends you back to where it all began. The worm swallows everything you carried;
+// anything else takes half.
 export function respawn() {
   const p = rt.player
-  const spot = findRockSpot(p.pos.x, p.pos.z)
-  p.pos.set(spot.x, terrainHeight(spot.x, spot.z), spot.z)
+  const { x, z } = rt.spawn
+  p.pos.set(x, terrainHeight(x, z), z)
   p.vel.set(0, 0, 0)
   p.grounded = true
   p.onRock = true
   rt.mode = 'foot'
   rt.ridden = null
-  rt.spice = Math.floor(rt.spice / 2)
-  rt.melange = Math.min(rt.melange, 0.15)
+  rt.spice = rt.deathReason === 'worm' ? 0 : Math.floor(rt.spice / 2)
+  rt.melange = 0
   rt.wormsign = 0
   rt.hunted = false
   rt.thumper.active = false
-  for (const w of rt.worms) {
-    if (w.kind === 'hunter' || w.state === 'surface' || w.state === 'breach') {
-      w.state = 'leave'
-      w.st = 0
-    }
-  }
-  if (!rt.thopter.alive || rt.thopter.pos.distanceTo(p.pos) > 260) placeThopterNear(spot.x, spot.z)
+  rt.combat.hp = rt.combat.maxHp
+  rt.combat.attacking = false
+  rt.storm.active = false
+  rt.worms = []
+  rt.foes = []
+  rt.carrier.active = false
+  rt.nextRaid = rt.time + 60
+  placeThopterNear(x, z)
   rt.deathReason = ''
   rt.phase = 'playing'
   rt.cam.snap = true

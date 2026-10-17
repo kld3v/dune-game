@@ -666,3 +666,33 @@ h2 {
     grid-template-columns: 110px 1fr;
   }
 }
+
+.bar-life .bar-fill {
+  background: #e9dcc0;
+}
+
+.bar-life .bar-fill.low {
+  background: #e0533a;
+  box-shadow: 0 0 8px #e0533a;
+}
+
+.trial {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+  max-width: 280px;
+}
+
+.trial-name {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #f0c27a;
+}
+
+.trial-goal {
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: rgba(236, 220, 191, 0.82);
+}

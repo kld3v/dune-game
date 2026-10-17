@@ -47,11 +47,27 @@ function harvester(): THREE.Vector3 | null {
 
 const blowPos = new THREE.Vector3()
 
+// Where the next blow will erupt is decided when it is scheduled, so a spice vision can
+// show it before it happens.
+export function planBlow(delay: number) {
+  const p = rt.player.pos
+  rt.nextBlow = rt.time + delay
+  const s = findSandSpot(p.x, p.z, 85, 190, 18, rt.cam.yaw, 1.3) ?? findSandSpot(p.x, p.z, 60, 220, 12)
+  if (s) rt.nextBlowPos.set(s.x, terrainHeight(s.x, s.z), s.z)
+}
+
 function startBlow() {
   const p = rt.player.pos
-  rt.nextBlow = rt.time + rand(50, 85)
-  const s = findSandSpot(p.x, p.z, 85, 190, 18, rt.cam.yaw, 1.3)
-  if (s) rt.blows.push({ id: rt.nextId++, x: s.x, z: s.z, t: 0, erupted: false })
+  let { x, z } = rt.nextBlowPos
+  if (Math.hypot(x - p.x, z - p.z) > 320) {
+    const s = findSandSpot(p.x, p.z, 85, 190, 18)
+    if (s) {
+      x = s.x
+      z = s.z
+    }
+  }
+  rt.blows.push({ id: rt.nextId++, x, z, t: 0, erupted: false })
+  planBlow(rand(50, 85))
 }
 
 export function updateSpice(dt: number) {
@@ -82,7 +98,7 @@ export function updateSpice(dt: number) {
   }
   if (harvesting) {
     rt.melange = Math.min(1.8, rt.melange + 0.012 * dt)
-    if (rt.mode === 'foot') rt.wormsign += 0.02 * dt
+    if (rt.mode === 'foot') rt.wormsign += 0.03 * dt
     rt.pickupT -= dt
     if (rt.pickupT <= 0) {
       audio.pickup()

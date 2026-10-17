@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { initInput } from './game/input'
@@ -11,6 +12,10 @@ import { Worms } from './scene/Worms'
 import { Thumper } from './scene/Thumper'
 import { Particles } from './scene/Particles'
 import { Visions } from './scene/Visions'
+import { Harkonnens } from './scene/Harkonnens'
+import { Carrier } from './scene/Carrier'
+import { Storm } from './scene/Storm'
+import { Future } from './scene/Future'
 import { PostFX } from './scene/PostFX'
 import { HUD } from './ui/HUD'
 import { Screens } from './ui/Screens'
@@ -19,6 +24,10 @@ import { Screens } from './ui/Screens'
 // render component reads the fresh state in its own useFrame.
 function GameLoop() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
+  const scene = useThree((s) => s.scene)
+  useEffect(() => {
+    if (new URLSearchParams(location.search).has('debug')) (window as unknown as Record<string, unknown>).__scene = scene
+  }, [scene])
   useFrame((_, delta) => update(delta, camera))
   return null
 }
@@ -42,6 +51,10 @@ export default function App() {
         <Thopter />
         <Worms />
         <Thumper />
+        <Harkonnens />
+        <Carrier />
+        <Storm />
+        <Future />
         <Particles />
         <Visions />
         <PostFX />

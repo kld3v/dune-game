@@ -9,6 +9,7 @@ import { RADII, ringOf } from './wormShape'
 import { audio } from './audio'
 import { sandBurst, shockRing, wake } from './fx'
 import { destroyThopter, destroyThumper, jolt, killPlayer, panFor, volFor } from './actions'
+import { killFoe } from './combat'
 import { isDown } from './input'
 import { toast } from './ui'
 
@@ -215,6 +216,20 @@ function eatCheck(w: Worm) {
       mouthPt.y < th.pos.y + R * 1.2) {
     destroyThumper()
   }
+  eatFoes(mouthPt.x, mouthPt.y, mouthPt.z, reach)
+}
+
+// Harkonnens on open sand are prey like anyone else.
+function eatFoes(x: number, y: number, z: number, reach: number) {
+  let n = 0
+  for (const f of rt.foes) {
+    if (f.state === 'dead' || f.gone || rockMask(f.pos.x, f.pos.z) > 0.5) continue
+    if (Math.hypot(f.pos.x - x, f.pos.y + 0.9 - y, f.pos.z - z) < reach) {
+      killFoe(f, 'worm')
+      n++
+    }
+  }
+  if (n > 0) toast(n > 1 ? `Shai-Hulud takes ${n} Harkonnen` : 'Shai-Hulud takes a Harkonnen', 'spice', 3500)
 }
 
 function slam(w: Worm, x: number, g: number, z: number) {
@@ -224,6 +239,7 @@ function slam(w: Worm, x: number, g: number, z: number) {
   jolt(w.head, 0.9, 260)
   if (rt.phase !== 'playing') return
   const radius = R * 1.6
+  eatFoes(x, g + 1, z, radius + 1)
   if (rt.mode === 'foot' && !rt.player.onRock) {
     const p = rt.player.pos
     if (Math.hypot(p.x - x, p.z - z) < radius && p.y < g + R * 2) killPlayer('worm')
@@ -257,18 +273,24 @@ function startBreach(w: Worm) {
 function approach(w: Worm, dt: number) {
   const pl = rt.player
   if (w.kind === 'hunter') {
-    if (playerSafe()) {
-      w.lostT += dt
-      if (w.lostT > 5) {
-        setState(w, 'leave')
-        toast('The worm has lost your trail', 'info')
-        rt.wormsign = 0.45
-        return
-      }
-    } else {
-      w.lostT = 0
-      w.target.set(pl.pos.x + pl.vel.x * 1.4, 0, pl.pos.z + pl.vel.z * 1.4)
+    // The stalker never leaves. Until your rhythm fills the wormsign it circles at a
+    // distance just under the sand; then it comes straight for you.
+    const dx = w.head.x - pl.pos.x
+    const dz = w.head.z - pl.pos.z
+    const r = Math.hypot(dx, dz)
+    if (r > 450) {
+      w.dead = true
+      return
     }
+    if (playerSafe() || rt.wormsign < 1) {
+      const circle = Math.atan2(dx, dz) + w.circleDir * (Math.PI / 2 + clamp((r - 90) / 40, -0.8, 0.8))
+      steer(w, circle, 1.2, dt)
+      w.speed = damp(w.speed, r > 160 ? 30 : 16, 0.8, dt)
+      advance(w, w.speed, DEPTH_DEEP, 3, dt)
+      w.mouthTarget = 0
+      return
+    }
+    w.target.set(pl.pos.x + pl.vel.x * 1.4, 0, pl.pos.z + pl.vel.z * 1.4)
   }
   const dx = w.target.x - w.head.x
   const dz = w.target.z - w.head.z
@@ -311,7 +333,10 @@ function breach(w: Worm) {
     slam(w, x, g, z)
   }
   eatCheck(w)
-  if (t > 0.6 && yRel <= DEPTH_SURF) setState(w, 'surface')
+  if (t > 0.6 && yRel <= DEPTH_SURF) {
+    setState(w, 'surface')
+    if (w.kind === 'hunter') rt.wormsign = 0.55
+  }
 }
 
 function surface(w: Worm, dt: number) {
@@ -341,10 +366,7 @@ function surface(w: Worm, dt: number) {
   eatCheck(w)
   const dur = w.kind === 'lure' ? 24 : w.kind === 'hunter' ? 6 : 26
   if (w.st > dur) {
-    if (w.kind === 'hunter') {
-      w.attempts++
-      w.resume = w.attempts < 3
-    }
+    w.attempts++
     setState(w, 'dive')
   }
 }
@@ -354,7 +376,8 @@ function dive(w: Worm, dt: number) {
   steer(w, w.yaw, 0.4, dt)
   w.speed = damp(w.speed, 15, 0.8, dt)
   advance(w, w.speed, -R * 3.2, 1.2, dt)
-  if (w.kind === 'hunter' && w.resume && w.st > 3 && !playerSafe()) {
+  // The stalker goes back under and resumes its circling; it never gives up.
+  if (w.kind === 'hunter' && w.st > 3) {
     setState(w, 'approach')
     return
   }
@@ -444,7 +467,9 @@ export function updateWorms(dt: number) {
   rt.cam.rumbleTarget = 0
   for (const w of rt.worms) updateWorm(w, dt)
   if (rt.worms.some((w) => w.dead)) rt.worms = rt.worms.filter((w) => !w.dead)
-  rt.hunted = rt.worms.some((w) => w.kind === 'hunter' && w.state !== 'leave' && w.state !== 'ridden')
+  // "Hunted" means the stalker is striking now, not merely circling.
+  rt.hunted = rt.worms.some((w) => w.kind === 'hunter' &&
+    (w.state === 'breach' || w.state === 'surface' || (w.state === 'approach' && rt.wormsign >= 1 && !playerSafe())))
 
   // Threat for the HUD: the closest worm that is coming for the player's patch of sand.
   let threat = 0
@@ -454,7 +479,7 @@ export function updateWorms(dt: number) {
   for (const w of rt.worms) {
     if (w.state === 'ridden' || w.state === 'leave') continue
     const d = Math.hypot(w.head.x - p.x, w.head.z - p.z)
-    const coming = w.kind === 'hunter' || Math.hypot(w.target.x - p.x, w.target.z - p.z) < 60
+    const coming = w.kind === 'hunter' ? rt.hunted : Math.hypot(w.target.x - p.x, w.target.z - p.z) < 60
     if (!coming && d > 90) continue
     const v = clamp(1 - d / 220, 0, 1)
     if (v > threat) {

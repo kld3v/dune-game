@@ -10,8 +10,17 @@ const CONTROLS: [string, string][] = [
   ['E', 'set hooks on a surfaced worm, board the ornithopter'],
   ['Q', 'call the ornithopter to you'],
   ['F', 'take the spice'],
+  ['Left mouse', 'sword: three strikes, the slow third one breaks shields'],
+  ['V', 'the Voice, once a trial teaches it'],
   ['M', 'sound on or off'],
 ]
+
+const DEATH: Record<string, string> = {
+  worm: 'Shai-Hulud has taken you',
+  thopter: 'The worm swallowed your ornithopter whole',
+  harkonnen: 'A Harkonnen blade found you',
+  storm: 'The storm stripped you to the bone',
+}
 
 function Controls() {
   return (
@@ -86,8 +95,10 @@ export function Screens() {
     return (
       <div className="screen dead">
         <div className="panel">
-          <h2>{reason === 'thopter' ? 'The worm swallowed your ornithopter whole' : 'Shai-Hulud has taken you'}</h2>
-          <p className="tagline">Half your spice is lost to the sand.</p>
+          <h2>{DEATH[reason] ?? DEATH.worm}</h2>
+          <p className="tagline">
+            {reason === 'worm' ? 'Back to the beginning. The worm keeps all your spice.' : 'Back to the beginning. Half your spice is lost to the sand.'}
+          </p>
           <p className="stats-line">
             {Math.floor(s.harvested)} spice harvested · {s.rides} {s.rides === 1 ? 'worm' : 'worms'} ridden · {s.doses} {s.doses === 1 ? 'dose' : 'doses'} taken
           </p>

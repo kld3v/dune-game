@@ -13,6 +13,8 @@ interface Levels {
   thopPitch: number
   thopPan: number
   trip: number
+  carrier: number
+  carrierPan: number
 }
 
 class AudioEngine {
@@ -26,6 +28,7 @@ class AudioEngine {
   private rumble!: { g: GainNode; sub: GainNode; grind: GainNode }
   private thop!: { g: GainNode; lfo: OscillatorNode; osc: OscillatorNode; pan: StereoPannerNode }
   private drone!: { g: GainNode; f: BiquadFilterNode; shimmer: GainNode }
+  private carrier!: { g: GainNode; pan: StereoPannerNode }
 
   init() {
     if (this.ctx) {
@@ -56,6 +59,7 @@ class AudioEngine {
     this.buildRumble()
     this.buildThopter()
     this.buildDrone()
+    this.buildCarrier()
   }
 
   setMuted(m: boolean) {
@@ -79,6 +83,385 @@ class AudioEngine {
     this.drone.g.gain.setTargetAtTime(Math.pow(p.trip, 1.4) * 0.2, t, 0.6)
     this.drone.f.frequency.setTargetAtTime(220 + p.trip * 900, t, 0.8)
     this.drone.shimmer.gain.setTargetAtTime(Math.max(0, p.trip - 0.45) * 0.07, t, 0.8)
+    this.carrier.g.gain.setTargetAtTime(p.carrier * 0.3, t, 0.3)
+    this.carrier.pan.pan.setTargetAtTime(clamp(p.carrierPan, -1, 1), t, 0.1)
+  }
+
+  // ---------- combat ----------
+
+  swing(heavy: boolean, pan = 0, vol = 1) {
+    const ctx = this.ctx
+    if (!ctx) return
+    const t = ctx.currentTime
+    const out = this.dest(pan, 0.15)
+    const dur = heavy ? 0.3 : 0.18
+    const n = this.noiseSrc(this.white, t, dur + 0.05)
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.Q.value = 2.5
+    bp.frequency.setValueAtTime(heavy ? 400 : 700, t)
+    bp.frequency.exponentialRampToValueAtTime(heavy ? 1600 : 2600, t + dur)
+    const g = ctx.createGain()
+    this.env(g.gain, t, (heavy ? 0.3 : 0.22) * vol, dur * 0.6, dur * 0.5)
+    n.connect(bp).connect(g).connect(out)
+  }
+
+  hit(pan: number) {
+    const ctx = this.ctx
+    if (!ctx) return
+    const t = ctx.currentTime
+    const out = this.dest(pan, 0.1)
+    this.tone(t, 'sine', 140, 55, 0.12, 0.5, 0.003, 0.14, out)
+    this.noiseBurst(t, 0.12, 'lowpass', 900, 0.8, 0.35, 0.002, 0.09, out)
+  }
+
+  shieldHit(pan: number) {
+    const ctx = this.ctx
+    if (!ctx) return
+    const t = ctx.currentTime
+    const out = this.dest(pan, 0.3)
+    this.tone(t, 'sine', 1500, 700, 0.1, 0.12, 0.002, 0.12, out)
+    this.tone(t, 'square', 220, 180, 0.18, 0.05, 0.004, 0.18, out, 1200)
+    this.noiseBurst(t, 0.1, 'bandpass', 3200, 4, 0.22, 0.001, 0.08, out)
+  }
+
+  shieldBreak(pan: number) {
+    const ctx = this.ctx
+    if (!ctx) return
+    const t = ctx.currentTime
+    const out = this.dest(pan, 0.4)
+    this.tone(t, 'sawtooth', 900, 120, 0.35, 0.16, 0.003, 0.4, out, 3000)
+    this.noiseBurst(t, 0.45, 'highpass', 2000, 0.7, 0.2, 0.002, 0.4, out)
+  }
+
+  hurt() {
+    const ctx = this.ctx
+    if (!ctx) return
+    const t = ctx.currentTime
+    const out = this.dest(0, 0.1)
+    this.tone(t, 'sine', 90, 50, 0.2, 0.6, 0.004, 0.22, out, 300)
+    this.noiseBurst(t, 0.18, 'bandpass', 520, 1, 0.3, 0.004, 0.14, out)
+  }
+
+  // A harsh shout pushed through two vowel formants.
+  yell(pan: number, vol = 1, low = false) {
+    const ctx = this.ctx
+    if (!ctx) return
+    const t = ctx.currentTime
+    const out = this.dest(pan, 0.35)
+    const o = ctx.createOscillator()
+    o.type = 'sawtooth'
+    o.frequency.setValueAtTime(low ? 125 : 165, t)
+    o.frequency.exponentialRampToValueAtTime(low ? 70 : 118, t + 0.5)
+    const g = ctx.createGain()
+    this.env(g.gain, t, 0.22 * vol, 0.03, 0.5)
+    for (const [f, q] of [[720, 6], [1150, 7]]) {
+      const bp = ctx.createBiquadFilter()
+      bp.type = 'bandpass'
+      bp.frequency.value = f
+      bp.Q.value = q
+      o.connect(bp).connect(g)
+    }
+    g.connect(out)
+    o.start(t)
+    o.stop(t + 0.6)
+  }
+
+  foeDeath(pan: number) {
+    this.yell(pan, 0.8, true)
+    this.hit(pan)
+  }
+
+  // The Voice: a doubled command an octave apart, a sub drop and a long tail. If the
+  // browser has a speech voice, it says the word underneath.
+  voice() {
+    const ctx = this.ctx
+    if (!ctx) return
+    const t = ctx.currentTime
+    const out = this.dest(0, 1.2)
+    for (const f0 of [82, 41]) {
+      const o = ctx.createOscillator()
+      o.type = 'sawtooth'
+      o.frequency.setValueAtTime(f0 * 1.15, t)
+      o.frequency.exponentialRampToValueAtTime(f0, t + 0.9)
+      const g = ctx.createGain()
+      this.env(g.gain, t, f0 > 50 ? 0.28 : 0.22, 0.04, 1.1)
+      const f1 = ctx.createBiquadFilter()
+      f1.type = 'bandpass'
+      f1.Q.value = 6
+      f1.frequency.setValueAtTime(300, t)
+      f1.frequency.linearRampToValueAtTime(270, t + 0.4)
+      f1.frequency.linearRampToValueAtTime(380, t + 1.0)
+      const f2 = ctx.createBiquadFilter()
+      f2.type = 'bandpass'
+      f2.Q.value = 8
+      f2.frequency.setValueAtTime(1500, t)
+      f2.frequency.linearRampToValueAtTime(2290, t + 0.35)
+      f2.frequency.linearRampToValueAtTime(1150, t + 1.0)
+      o.connect(f1).connect(g)
+      o.connect(f2).connect(g)
+      g.connect(out)
+      o.start(t)
+      o.stop(t + 1.3)
+    }
+    this.tone(t, 'sine', 48, 28, 1.6, 0.9, 0.02, 1.8, out)
+    try {
+      const u = new SpeechSynthesisUtterance('Kneel')
+      u.pitch = 0.1
+      u.rate = 0.7
+      u.volume = 1
+      speechSynthesis.speak(u)
+    } catch {
+      // no speech voices on this system; the synth layer carries it
+    }
+  }
+
+  thunder(vol: number) {
+    const ctx = this.ctx
+    if (!ctx) return
+    const t = ctx.currentTime
+    const out = this.dest(rand(-0.6, 0.6), 0.8)
+    this.noiseBurst(t, 0.12, 'highpass', 1500, 0.7, 0.4 * vol, 0.002, 0.1, out)
+    const n = this.noiseSrc(this.brown, t, 3.5)
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.setValueAtTime(900, t)
+    lp.frequency.exponentialRampToValueAtTime(120, t + 3)
+    const g = ctx.createGain()
+    this.env(g.gain, t + 0.05, 1.3 * vol, 0.15, 3)
+    n.connect(lp).connect(g).connect(out)
+  }
+
+  // ---------- the riding score ----------
+  // A small lookahead sequencer: war drums, a D drone, brass swells and a vocal lead in
+  // D Hijaz, all synthesised. intensity 0..1 follows the worm's speed.
+
+  private music: {
+    on: boolean
+    timer: number
+    step: number
+    next: number
+    bus: GainNode
+    drone: GainNode
+    droneF: BiquadFilterNode
+    lead: { o: OscillatorNode; g: GainNode; vib: GainNode } | null
+    intensity: number
+    started: number
+  } | null = null
+
+  musicStart() {
+    const ctx = this.ctx
+    if (!ctx) return
+    if (this.music?.on) return
+    if (!this.music) {
+      const bus = ctx.createGain()
+      bus.gain.value = 0
+      bus.connect(this.master)
+      const send = ctx.createGain()
+      send.gain.value = 0.35
+      bus.connect(send).connect(this.verb)
+      const droneF = ctx.createBiquadFilter()
+      droneF.type = 'lowpass'
+      droneF.frequency.value = 220
+      droneF.Q.value = 1.2
+      const drone = ctx.createGain()
+      drone.gain.value = 0
+      for (const [f, ty, gv] of [[36.71, 'sawtooth', 0.3], [73.42, 'sawtooth', 0.22], [55, 'sawtooth', 0.14], [36.9, 'sine', 0.4]] as const) {
+        const o = ctx.createOscillator()
+        o.type = ty
+        o.frequency.value = f
+        const og = ctx.createGain()
+        og.gain.value = gv
+        o.connect(og).connect(droneF)
+        o.start()
+      }
+      droneF.connect(drone).connect(bus)
+      this.music = { on: false, timer: 0, step: 0, next: 0, bus, drone, droneF, lead: null, intensity: 0, started: 0 }
+    }
+    const m = this.music
+    m.on = true
+    m.step = 0
+    m.next = ctx.currentTime + 0.1
+    m.started = ctx.currentTime
+    m.bus.gain.cancelScheduledValues(ctx.currentTime)
+    m.bus.gain.setTargetAtTime(0.9, ctx.currentTime, 0.8)
+    m.drone.gain.setTargetAtTime(0.5, ctx.currentTime, 1.5)
+    window.clearInterval(m.timer)
+    m.timer = window.setInterval(() => this.schedule(), 25)
+  }
+
+  musicStop() {
+    const m = this.music
+    const ctx = this.ctx
+    if (!m || !ctx || !m.on) return
+    m.on = false
+    m.bus.gain.setTargetAtTime(0, ctx.currentTime, 1.2)
+    m.drone.gain.setTargetAtTime(0, ctx.currentTime, 1.2)
+    window.setTimeout(() => {
+      if (!m.on) window.clearInterval(m.timer)
+    }, 4000)
+  }
+
+  musicIntensity(v: number) {
+    if (!this.music || !this.ctx) return
+    this.music.intensity = clamp(v, 0, 1)
+    this.music.droneF.frequency.setTargetAtTime(160 + v * 700, this.ctx.currentTime, 0.6)
+  }
+
+  private schedule() {
+    const ctx = this.ctx
+    const m = this.music
+    if (!ctx || !m || !m.on) return
+    const sixteenth = 60 / 96 / 4
+    while (m.next < ctx.currentTime + 0.15) {
+      this.playStep(m.step, m.next, sixteenth)
+      m.next += sixteenth
+      m.step++
+    }
+  }
+
+  private playStep(step: number, t: number, s16: number) {
+    const m = this.music!
+    const I = m.intensity
+    const bar = Math.floor(step / 16)
+    const k = step % 16
+    const build = Math.min(1, bar / 2)
+    // Taiko pattern: the big drum on a syncopated figure, toms filling in as it builds.
+    if ([0, 6, 8, 11, 14].includes(k)) this.taiko(t, k === 0 ? 1 : 0.7, 1)
+    if (build > 0.5 && [3, 4, 10, 12, 15].includes(k)) this.taiko(t, 0.35 + I * 0.25, 1.7)
+    if (I > 0.55 && k % 2 === 0) this.frameDrum(t, k % 4 === 0 ? 0.5 : 0.25)
+    if (k === 0 && bar % 2 === 0 && bar > 0) this.brass(t, s16 * 28, 0.35 + I * 0.5)
+    if (bar >= 2 && k === 0) this.leadPhrase(t, bar, s16)
+  }
+
+  private taiko(t: number, vel: number, pitch: number) {
+    const ctx = this.ctx!
+    const out = this.music!.bus
+    const o = ctx.createOscillator()
+    o.frequency.setValueAtTime(82 * pitch, t)
+    o.frequency.exponentialRampToValueAtTime(40 * pitch, t + 0.28)
+    const g = ctx.createGain()
+    this.env(g.gain, t, 0.9 * vel, 0.004, 0.55)
+    o.connect(g).connect(out)
+    o.start(t)
+    o.stop(t + 0.7)
+    const n = this.noiseSrc(this.white, t, 0.12)
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 700 * pitch
+    const ng = ctx.createGain()
+    this.env(ng.gain, t, 0.35 * vel, 0.002, 0.08)
+    n.connect(lp).connect(ng).connect(out)
+  }
+
+  private frameDrum(t: number, vel: number) {
+    const ctx = this.ctx!
+    const n = this.noiseSrc(this.white, t, 0.08)
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = 2400
+    bp.Q.value = 1.4
+    const g = ctx.createGain()
+    this.env(g.gain, t, 0.12 * vel, 0.002, 0.06)
+    n.connect(bp).connect(g).connect(this.music!.bus)
+  }
+
+  private brass(t: number, dur: number, vel: number) {
+    const ctx = this.ctx!
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.Q.value = 2
+    lp.frequency.setValueAtTime(200, t)
+    lp.frequency.linearRampToValueAtTime(1400 * vel + 300, t + dur * 0.45)
+    lp.frequency.linearRampToValueAtTime(260, t + dur)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(0.11 * vel, t + dur * 0.4)
+    g.gain.linearRampToValueAtTime(0.0001, t + dur)
+    lp.connect(g).connect(this.music!.bus)
+    for (const f of [73.42, 110, 146.83, 220]) {
+      for (const det of [-6, 6]) {
+        const o = ctx.createOscillator()
+        o.type = 'sawtooth'
+        o.frequency.value = f
+        o.detune.value = det
+        o.connect(lp)
+        o.start(t)
+        o.stop(t + dur + 0.1)
+      }
+    }
+  }
+
+  // D Hijaz: D Eb F# G A Bb C. Each phrase is [semitones above D4, length in 16ths].
+  private static PHRASES: [number, number][][] = [
+    [[0, 8], [1, 2], [4, 6], [5, 4], [4, 2], [1, 2], [0, 8], [-2, 4], [0, 12]],
+    [[7, 8], [5, 2], [4, 2], [5, 4], [8, 6], [7, 2], [5, 4], [4, 4], [1, 4], [0, 12]],
+    [[12, 6], [10, 2], [8, 4], [7, 8], [8, 2], [7, 2], [5, 4], [4, 8], [1, 4], [0, 8]],
+  ]
+
+  private leadPhrase(t: number, bar: number, s16: number) {
+    const m = this.music!
+    if (m.intensity < 0.25 || bar % 4 !== 2) return
+    const ctx = this.ctx!
+    const phrase = AudioEngine.PHRASES[Math.floor(bar / 4) % AudioEngine.PHRASES.length]
+    const o = ctx.createOscillator()
+    o.type = 'sawtooth'
+    const vib = ctx.createOscillator()
+    vib.frequency.value = 5.6
+    const vibG = ctx.createGain()
+    vibG.gain.value = 0
+    vib.connect(vibG).connect(o.detune)
+    const g = ctx.createGain()
+    g.gain.value = 0
+    const f1 = ctx.createBiquadFilter()
+    f1.type = 'bandpass'
+    f1.frequency.value = 780
+    f1.Q.value = 5
+    const f2 = ctx.createBiquadFilter()
+    f2.type = 'bandpass'
+    f2.frequency.value = 1180
+    f2.Q.value = 6
+    o.connect(f1).connect(g)
+    o.connect(f2).connect(g)
+    const send = ctx.createGain()
+    send.gain.value = 0.7
+    g.connect(m.bus)
+    g.connect(send).connect(this.verb)
+    let at = t
+    const base = 293.66
+    o.frequency.setValueAtTime(base * Math.pow(2, phrase[0][0] / 12), t)
+    for (const [semi, len] of phrase) {
+      const f = base * Math.pow(2, semi / 12)
+      o.frequency.setTargetAtTime(f, at, 0.04)
+      const d = len * s16
+      g.gain.setTargetAtTime(0.16 * (0.6 + m.intensity * 0.4), at, 0.06)
+      // Long notes bloom into a wide, ululating vibrato.
+      vibG.gain.setValueAtTime(4, at)
+      if (d > 0.5) vibG.gain.linearRampToValueAtTime(38, at + d * 0.9)
+      at += d
+    }
+    g.gain.setTargetAtTime(0, at, 0.25)
+    o.start(t)
+    vib.start(t)
+    o.stop(at + 1.5)
+    vib.stop(at + 1.5)
+  }
+
+  prescience() {
+    const ctx = this.ctx
+    if (!ctx) return
+    const t = ctx.currentTime
+    const out = this.dest(0, 0.9)
+    const n = this.noiseSrc(this.white, t, 0.9)
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.Q.value = 3
+    lp.frequency.setValueAtTime(3200, t)
+    lp.frequency.exponentialRampToValueAtTime(260, t + 0.6)
+    const g = ctx.createGain()
+    this.env(g.gain, t, 0.22, 0.12, 0.6)
+    n.connect(lp).connect(g).connect(out)
+    this.tone(t, 'sine', 70, 52, 0.8, 0.35, 0.1, 0.8, out)
   }
 
   // ---------- one-shots ----------
@@ -473,6 +856,33 @@ class AudioEngine {
     osc.start()
     lfo.start()
     this.thop = { g, lfo, osc, pan }
+  }
+
+  private buildCarrier() {
+    const ctx = this.ctx!
+    const o = ctx.createOscillator()
+    o.type = 'sawtooth'
+    o.frequency.value = 38
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 260
+    const am = ctx.createGain()
+    am.gain.value = 0.5
+    const lfo = ctx.createOscillator()
+    lfo.type = 'triangle'
+    lfo.frequency.value = 8
+    const lfoG = ctx.createGain()
+    lfoG.gain.value = 0.45
+    lfo.connect(lfoG).connect(am.gain)
+    o.connect(lp).connect(am)
+    this.loopSrc(this.brown).connect(lp)
+    const pan = ctx.createStereoPanner()
+    const g = ctx.createGain()
+    g.gain.value = 0
+    am.connect(pan).connect(g).connect(this.master)
+    o.start()
+    lfo.start()
+    this.carrier = { g, pan }
   }
 
   private buildDrone() {

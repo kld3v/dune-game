@@ -3,10 +3,11 @@ import { rt, type Mode } from '../game/rt'
 import { useUI } from '../game/ui'
 import { bearingOf, clamp, wrap180, yawToBearing } from '../game/math'
 import { fieldRadius } from '../game/spice'
+import { currentTrial, trialProgress } from '../game/trials'
 
 const HINTS: Record<Mode, [string, string][]> = {
   foot: [
-    ['WASD', 'move'], ['Shift', 'run'], ['C', 'sandwalk'], ['Space', 'jump'], ['T', 'thumper'],
+    ['WASD', 'move'], ['LMB', 'sword'], ['V', 'Voice'], ['Shift', 'run'], ['C', 'sandwalk'], ['Space', 'jump'], ['T', 'thumper'],
     ['F', 'take spice'], ['Q', 'call thopter'], ['E', 'interact'], ['M', 'sound'],
   ],
   worm: [
@@ -73,6 +74,9 @@ export function HUD() {
   const arrow = useRef<HTMLSpanElement>(null)
   const clock = useRef<HTMLDivElement>(null)
   const fps = useRef<HTMLDivElement>(null)
+  const hpFill = useRef<HTMLDivElement>(null)
+  const trialName = useRef<HTMLSpanElement>(null)
+  const trialGoal = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     const pool: MarkerEl[] = []
@@ -134,6 +138,20 @@ export function HUD() {
       for (let i = n; i < pool.length; i++) pool[i].el.style.display = 'none'
 
       if (spiceVal.current) spiceVal.current.textContent = String(Math.floor(rt.spice))
+      const hp = clamp(rt.combat.hp / rt.combat.maxHp, 0, 1)
+      if (hpFill.current) {
+        hpFill.current.style.width = `${hp * 100}%`
+        hpFill.current.classList.toggle('low', hp < 0.3)
+      }
+      const trial = currentTrial()
+      const setText = (el: HTMLElement | null, s: string) => {
+        if (el && el.textContent !== s) el.textContent = s
+      }
+      setText(trialName.current, trial ? trial.title : 'Trials complete')
+      setText(
+        trialGoal.current,
+        trial ? `${trial.goal}  ${Math.floor(trialProgress() * trial.target)}/${trial.target}${trial.unit ?? ''}` : 'The desert knows your name.',
+      )
       if (melFill.current) melFill.current.style.width = `${clamp(rt.melange, 0, 1) * 100}%`
       if (melBar.current) melBar.current.classList.toggle('over', rt.melange > 1)
       if (wsFill.current) {
@@ -183,6 +201,12 @@ export function HUD() {
           <span className="stat-value" ref={spiceVal}>0</span>
         </div>
         <div className="bar-row">
+          <span className="stat-label">Life</span>
+          <div className="bar bar-life">
+            <div className="bar-fill" ref={hpFill} />
+          </div>
+        </div>
+        <div className="bar-row">
           <span className="stat-label">Melange</span>
           <div className="bar bar-melange" ref={melBar}>
             <div className="bar-fill" ref={melFill} />
@@ -194,6 +218,10 @@ export function HUD() {
             <div className="bar-fill" ref={wsFill} />
           </div>
           <span className="bar-note" ref={wsLabel} />
+        </div>
+        <div className="trial">
+          <span className="trial-name" ref={trialName} />
+          <span className="trial-goal" ref={trialGoal} />
         </div>
       </div>
       <div className="corner">

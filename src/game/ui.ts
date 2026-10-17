@@ -27,6 +27,8 @@ interface UIState {
   muted: boolean
   shake: boolean
   deathReason: string
+  voiceAt: number
+  prophecy: { id: number; text: string } | null
 }
 
 export const useUI = create<UIState>(() => ({
@@ -38,7 +40,22 @@ export const useUI = create<UIState>(() => ({
   muted: false,
   shake: true,
   deathReason: '',
+  voiceAt: 0,
+  prophecy: null,
 }))
+
+// A prophecy is a vision that matters: shown centred and long enough to read.
+export function prophecy(text: string) {
+  const id = nextId++
+  useUI.setState({ prophecy: { id, text } })
+  window.setTimeout(() => {
+    if (useUI.getState().prophecy?.id === id) useUI.setState({ prophecy: null })
+  }, 7000)
+}
+
+export function voiceFlash() {
+  useUI.setState({ voiceAt: Date.now() })
+}
 
 let nextId = 1
 

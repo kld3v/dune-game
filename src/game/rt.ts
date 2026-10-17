@@ -48,6 +48,51 @@ export interface Worm {
   dead: boolean
 }
 
+export type FoeState = 'drop' | 'search' | 'investigate' | 'alert' | 'chase' | 'attack' | 'hit' | 'stunned' | 'dead'
+
+export interface Foe {
+  id: number
+  pos: THREE.Vector3
+  vel: THREE.Vector3
+  yaw: number
+  state: FoeState
+  st: number
+  hp: number
+  shield: number
+  shieldT: number
+  flash: number
+  suspicion: number
+  home: THREE.Vector3
+  waypoint: THREE.Vector3
+  lastSeen: THREE.Vector3
+  seenT: number
+  attackCD: number
+  struck: boolean
+  stunFor: number
+  pause: number
+  speed: number
+  anim: string
+  animKey: number
+  screenX: number
+  screenY: number
+  onScreen: boolean
+  gone: boolean
+}
+
+export interface Carrier {
+  active: boolean
+  state: 'inbound' | 'drop' | 'search' | 'leave'
+  st: number
+  pos: THREE.Vector3
+  vel: THREE.Vector3
+  yaw: number
+  target: THREE.Vector3
+  dropped: number
+  beam: THREE.Vector3
+  beamOn: number
+  wingPhase: number
+}
+
 export interface SpiceField {
   id: number
   x: number
@@ -92,6 +137,7 @@ export const rt = {
   tod: 0.64,
   dayLength: 840,
   started: false,
+  spawn: { x: 0, z: 0 },
 
   player: {
     pos: new THREE.Vector3(),
@@ -145,6 +191,62 @@ export const rt = {
 
   thumper: { active: false, pos: new THREE.Vector3(), t: 0, beat: 0, called: false, phase: 0 },
 
+  combat: {
+    hp: 100,
+    maxHp: 100,
+    hurtT: 99,
+    hurtAt: -99,
+    iframes: 0,
+    attacking: false,
+    atkIdx: 0,
+    atkT: 0,
+    atkHit: false,
+    atkQueued: false,
+    voiceCD: 0,
+    voiceAt: -99,
+    lockId: 0,
+  },
+  foes: [] as Foe[],
+  carrier: {
+    active: false,
+    state: 'inbound',
+    st: 0,
+    pos: new THREE.Vector3(),
+    vel: new THREE.Vector3(),
+    yaw: 0,
+    target: new THREE.Vector3(),
+    dropped: 0,
+    beam: new THREE.Vector3(),
+    beamOn: 0,
+    wingPhase: 0,
+  } as Carrier,
+  nextRaid: 50,
+  nextRaidPos: new THREE.Vector3(),
+  foeSign: 0,
+  storm: {
+    active: false,
+    dirX: 1,
+    dirZ: 0,
+    front: 0,
+    depth: 420,
+    speed: 17,
+    t: 0,
+    inside: 0,
+    flowing: false,
+    lightning: 0,
+    nextBolt: 0,
+  },
+  nextStorm: 210,
+  nextStormDir: 0,
+  nextBlowPos: new THREE.Vector3(),
+  visualTod: 0,
+  flash: { t: 0, x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0, cooldown: 0 },
+  prophecyT: 6,
+  riding: { epic: 0, mountT: 99 },
+  slowmo: 0,
+  presT: 0,
+  hitstop: 0,
+
   spice: 30,
   melange: 0,
   trip: 0,
@@ -170,7 +272,12 @@ export const rt = {
   deathReason: '',
   hintStep: 0,
   hintT: 2,
-  stats: { harvested: 0, rides: 0, doses: 0, deaths: 0 },
+  stats: {
+    harvested: 0, rides: 0, doses: 0, deaths: 0, kills: 0, wormKills: 0,
+    rideDist: 0, flowTime: 0, sandwalkDist: 0, prophecies: 0,
+  },
+  upgrades: { dmg: 1, voice: false },
+  trial: { idx: 0, base: 0, doneT: -99 },
   nextId: 1,
 
   env: {

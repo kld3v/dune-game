@@ -38,7 +38,7 @@ varying vec3 vN;
 varying vec3 vW;
 void main() {
   vec3 V = normalize(cameraPosition - vW);
-  float fr = pow(1.0 - abs(dot(normalize(vN), V)), 2.0);
+  float fr = pow(clamp(1.0 - abs(dot(normalize(vN), V)), 0.0, 1.0), 2.0);
   float band = 0.5 + 0.5 * sin(dot(vW, vec3(0.21, 0.13, 0.17)) - uTime * 3.0);
   vec3 c = mix(vec3(0.2, 0.55, 1.7), vec3(1.5, 0.45, 2.1), band);
   gl_FragColor = vec4(c * (0.12 + fr * 1.5) * uOpacity, 1.0);
