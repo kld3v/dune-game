@@ -197,7 +197,9 @@ function poseRig(v: View, f: Foe, dt: number) {
     v.key = f.animKey
   }
   const a = v.actions!.get(name)
-  if (a) a.timeScale = name === 'walk' ? clamp(f.speed / 1.7, 0.6, 1.6) : name === 'run' ? clamp(f.speed / 5.6, 0.7, 1.4) : 1
+  // The downward slash's blade crosses the target 0.68s into the clip; the AI strikes at
+  // 0.6s into its attack, so play it slightly fast to land the chop on the hit.
+  if (a) a.timeScale = name === 'walk' ? clamp(f.speed / 1.7, 0.6, 1.6) : name === 'run' ? clamp(f.speed / 5.6, 0.7, 1.4) : name === 'slash' ? 1.13 : 1
   v.mixer!.update(dt)
 }
 
