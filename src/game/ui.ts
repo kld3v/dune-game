@@ -43,6 +43,9 @@ interface UIState {
   voiceAt: number
   prophecy: { id: number; text: string } | null
   dialogue: Dialogue | null
+  net: { status: string; count: number; cap: number }
+  chat: { id: number; name: string; text: string; at: number }[]
+  chatOpen: boolean
 }
 
 export const useUI = create<UIState>(() => ({
@@ -57,6 +60,9 @@ export const useUI = create<UIState>(() => ({
   voiceAt: 0,
   prophecy: null,
   dialogue: null,
+  net: { status: 'off', count: 0, cap: 20 },
+  chat: [],
+  chatOpen: false,
 }))
 
 // A prophecy is a vision that matters: shown centred and long enough to read.

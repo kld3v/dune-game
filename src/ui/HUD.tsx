@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { rt, type Mode } from '../game/rt'
 import { useUI } from '../game/ui'
 import { bearingOf, clamp, wrap180, yawToBearing } from '../game/math'
@@ -7,6 +7,7 @@ import { currentTrial, trialProgress } from '../game/trials'
 import { titleFor, xpToNext } from '../game/progress'
 import { FOE_HP, SHIELD_MAX, power } from '../game/combat'
 import { CITY_X, CITY_Z } from '../game/terrain'
+import { net, sendChat } from '../net/client'
 
 const HINTS: Record<Mode, [string, string][]> = {
   foot: [
@@ -67,6 +68,11 @@ export function HUD() {
   const dialogue = useUI((s) => s.dialogue)
   const voiceAt = useUI((s) => s.voiceAt)
   const prophecy = useUI((s) => s.prophecy)
+  const netInfo = useUI((s) => s.net)
+  const chat = useUI((s) => s.chat)
+  const chatOpen = useUI((s) => s.chatOpen)
+  const [draft, setDraft] = useState('')
+  const [, tick] = useState(0)
 
   const strip = useRef<HTMLDivElement>(null)
   const markers = useRef<HTMLDivElement>(null)
@@ -94,6 +100,7 @@ export function HUD() {
   const voiceChip = useRef<HTMLDivElement>(null)
   const voiceFill = useRef<HTMLDivElement>(null)
   const fadeEl = useRef<HTMLDivElement>(null)
+  const nameHost = useRef<HTMLDivElement>(null)
   const solariEl = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
@@ -135,6 +142,17 @@ export function HUD() {
         tags.push({ el, mark, bars, hp, sh })
       }
       return tags[i]
+    }
+    // Name tags over everyone else in the desert.
+    const names: { el: HTMLDivElement; id: number }[] = []
+    const nameTag = (i: number) => {
+      while (names.length <= i) {
+        const el = document.createElement('div')
+        el.className = 'name-tag'
+        nameHost.current!.appendChild(el)
+        names.push({ el, id: -1 })
+      }
+      return names[i]
     }
     const showFps = new URLSearchParams(location.search).has('fps')
     let raf = 0
@@ -282,10 +300,40 @@ export function HUD() {
         tag.bars.style.opacity = d < 30 || f.hp < FOE_HP ? '1' : '0'
       }
       for (let i = fi; i < tags.length; i++) tags[i].el.style.display = 'none'
+      let ni = 0
+      for (const r of net.remotes.values()) {
+        if (!r.onScreen || (r.state.mode === 'cave') !== !!rt.cave) continue
+        const d = Math.hypot(r.pos.x - p.x, r.pos.z - p.z)
+        if (d > 400) continue
+        const tag = nameTag(ni++)
+        tag.el.style.display = ''
+        tag.el.style.transform = `translate(${r.screenX}px, ${r.screenY}px)`
+        tag.el.style.opacity = String(clamp(1.3 - d / 300, 0.35, 1))
+        setText(tag.el, `${r.name}  ·  LV ${r.state.level}`)
+      }
+      for (let i = ni; i < names.length; i++) names[i].el.style.display = 'none'
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
   }, [])
+
+  // Enter opens the chat line when there are others to talk to.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Enter' || chatOpen || phase !== 'playing' || netInfo.status !== 'online') return
+      e.preventDefault()
+      useUI.setState({ chatOpen: true })
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [chatOpen, phase, netInfo.status])
+
+  // Old chat lines fade away.
+  useEffect(() => {
+    if (!chat.length) return
+    const id = window.setInterval(() => tick((n) => n + 1), 1000)
+    return () => window.clearInterval(id)
+  }, [chat.length])
 
   const active = phase === 'playing' || phase === 'paused'
   const [key, ...rest] = prompt.split('  ')
@@ -293,6 +341,43 @@ export function HUD() {
   return (
     <div className={`hud ${active ? '' : 'hud-hidden'}`}>
       <div className="threat" ref={threat} />
+      <div className="name-tags" ref={nameHost} />
+      {netInfo.status !== 'off' ? (
+        <div className={`online ${netInfo.status}`}>
+          {netInfo.status === 'online' ? `Online  ·  ${netInfo.count}/${netInfo.cap}` : netInfo.status === 'connecting' ? 'Connecting to Arrakis' : netInfo.status === 'full' ? 'Server full' : 'Offline'}
+        </div>
+      ) : null}
+      <div className="chat">
+        {chat
+          .filter((c) => chatOpen || Date.now() - c.at < 15000)
+          .map((c) => (
+            <div key={c.id} className="chat-line">
+              <b>{c.name}</b> {c.text}
+            </div>
+          ))}
+        {chatOpen ? (
+          <input
+            className="chat-input"
+            autoFocus
+            maxLength={160}
+            placeholder="Say something  ·  Enter to send, Esc to cancel"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                sendChat(draft)
+                setDraft('')
+                useUI.setState({ chatOpen: false })
+                e.preventDefault()
+              } else if (e.key === 'Escape') {
+                setDraft('')
+                useUI.setState({ chatOpen: false })
+              }
+              e.stopPropagation()
+            }}
+          />
+        ) : null}
+      </div>
       <div className="fade" ref={fadeEl} />
       <div className="hurt" ref={hurt} />
       <div className="letterbox top" ref={boxTop} />

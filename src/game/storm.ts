@@ -23,6 +23,20 @@ export function scheduleStorm(delay: number) {
   rt.nextStormDir = Math.atan2(WIND_X, WIND_Z) + rand(-0.6, 0.6)
 }
 
+// A storm the server raised for everyone: same plane, same speed, wherever you stand.
+export function stormFromServer(ev: { dirX: number; dirZ: number; front: number; depth: number; speed: number; at: number }, serverNow: number) {
+  const s = rt.storm
+  s.dirX = ev.dirX
+  s.dirZ = ev.dirZ
+  s.depth = ev.depth
+  s.speed = ev.speed
+  s.front = ev.front + (ev.speed * (serverNow - ev.at)) / 1000
+  s.t = Math.max(0, (serverNow - ev.at) / 1000)
+  s.active = true
+  const from = Math.round(bearingOf(-s.dirX, -s.dirZ))
+  toast(`Coriolis storm rising, bearing ${from}°. Shelter on rock, fly above it, or take the spice and flow with it.`, 'warn', 9000)
+}
+
 function startStorm() {
   const s = rt.storm
   s.dirX = Math.sin(rt.nextStormDir)

@@ -19,6 +19,7 @@ import { Future } from './scene/Future'
 import { Sietches } from './scene/Sietches'
 import { City } from './scene/City'
 import { Cave } from './scene/Cave'
+import { Remotes } from './scene/Remotes'
 import { PostFX } from './scene/PostFX'
 import { HUD } from './ui/HUD'
 import { Screens } from './ui/Screens'
@@ -61,6 +62,7 @@ export default function App() {
         <Sietches />
         <City />
         <Cave />
+        <Remotes />
         <Particles />
         <Visions />
         <PostFX />

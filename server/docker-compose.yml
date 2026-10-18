@@ -1,0 +1,14 @@
+services:
+  arrakis:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    container_name: arrakis-server
+    restart: unless-stopped
+    # Local only: the Cloudflare tunnel reaches it on the Pi. If the tunnel runs on a
+    # different Pi, change this to "8006:8006" so it can reach across the LAN.
+    ports:
+      - "127.0.0.1:8006:8006"
+    environment:
+      MAX_PLAYERS: "20"
+      ALLOWED_ORIGINS: "https://dune-game-arrakis.netlify.app"

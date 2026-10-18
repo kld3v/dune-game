@@ -1100,3 +1100,96 @@ h2 {
   pointer-events: none;
   z-index: 5;
 }
+
+.name-tags {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.name-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: #f3e6c8;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  translate: -50% -100%;
+}
+
+.online {
+  position: absolute;
+  top: 46px;
+  right: 22px;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: #9fd0ff;
+}
+
+.online.offline,
+.online.full {
+  color: rgba(236, 220, 191, 0.5);
+}
+
+.chat {
+  position: absolute;
+  left: 22px;
+  bottom: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: min(420px, calc(100vw - 44px));
+  pointer-events: none;
+}
+
+.chat-line {
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: #efe3c8;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.chat-line b {
+  color: #f0c27a;
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+.chat-input {
+  pointer-events: auto;
+  margin-top: 4px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: #f3e6c8;
+  background: rgba(14, 10, 7, 0.82);
+  border: 1px solid rgba(236, 220, 191, 0.25);
+  outline: none;
+}
+
+.name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 16px;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(236, 220, 191, 0.7);
+}
+
+.name-field input {
+  width: min(320px, 100%);
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: #f3e6c8;
+  background: rgba(14, 10, 7, 0.6);
+  border: 1px solid rgba(236, 220, 191, 0.3);
+  outline: none;
+}

@@ -22,6 +22,9 @@ export function initInput(canvas: HTMLElement, hooks: { onUnlock: () => void; on
   canvasEl = canvas
 
   window.addEventListener('keydown', (e) => {
+    // Typing a name or a chat line is not walking.
+    const el = e.target as HTMLElement | null
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return
     if (PREVENT.has(e.code)) e.preventDefault()
     if (e.code === 'Escape' && !input.locked) hooks.onEscape()
     if (!e.repeat) input.pressed.add(e.code)

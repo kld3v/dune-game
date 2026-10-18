@@ -1,0 +1,22 @@
+{
+  "name": "arrakis-server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Multiplayer server for the Arrakis Dune game: up to 20 players share one desert.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node --experimental-strip-types src/index.ts",
+    "check": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/ws": "^8.18.1",
+    "typescript": "~6.0.2"
+  }
+}

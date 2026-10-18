@@ -23,6 +23,7 @@ import { loadProfile, updateProgress } from './progress'
 import { initSietches, updateSietches } from './sietch'
 import { cityLayout, updateCity } from './city'
 import { enterCave, updateCave, updateFade } from './cave'
+import { net, startNet, updateNet } from '../net/client'
 
 const HINTS = [
   'Walk without rhythm. The sand listens. Hold C to sandwalk.',
@@ -56,7 +57,17 @@ export function initGame() {
   updateEnv(0)
 }
 
+let netStarted = false
+
+// Join the shared desert, if there is one, once the name on the title screen is set.
+function joinNet() {
+  if (netStarted) return
+  netStarted = true
+  startNet()
+}
+
 export function startGame() {
+  joinNet()
   audio.init()
   void requestLock()
   if (!rt.started) {
@@ -267,6 +278,7 @@ export function update(rawDt: number, camera: THREE.PerspectiveCamera) {
     hints(dt)
   }
   updateFade(dt)
+  updateNet(dt)
   placeCamera(dt, camera)
   audioT -= dt
   if (audioT <= 0) {
@@ -282,6 +294,7 @@ export function installDebug() {
   if (!q.has('debug')) return
   const w = window as unknown as Record<string, unknown>
   w.__rt = rt
+  w.__net = net
   w.__dbg = {
     play: () => {
       rt.started = true
@@ -365,6 +378,7 @@ export function installDebug() {
   }
   if (q.has('tod')) rt.tod = Number(q.get('tod'))
   if (q.has('autoplay')) {
+    joinNet()
     rt.started = true
     rt.phase = 'playing'
     rt.hintStep = 99

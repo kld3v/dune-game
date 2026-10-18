@@ -3,6 +3,7 @@ import { useUI } from '../game/ui'
 import { rt } from '../game/rt'
 import { resumeGame, rise, startGame, toggleMute, toggleShake } from '../game/sim'
 import { resetProfile } from '../game/progress'
+import { mmoUrl, playerName, setPlayerName } from '../net/client'
 
 const CONTROLS: [string, string][] = [
   ['WASD + mouse', 'walk and look'],
@@ -43,6 +44,8 @@ export function Screens() {
   const shake = useUI((s) => s.shake)
   const [coarse] = useState(() => window.matchMedia('(pointer: coarse)').matches)
   const [canRise, setCanRise] = useState(false)
+  const [shared] = useState(() => !!mmoUrl())
+  const [name, setName] = useState(playerName)
 
   useEffect(() => {
     if (phase !== 'dead') return
@@ -68,6 +71,20 @@ export function Screens() {
         <div className="title-block">
           <h1>Arrakis</h1>
           <p className="tagline">Ride the maker · Fly the ornithopter · Take the spice</p>
+          {shared ? (
+            <label className="name-field">
+              <span>Your name in the desert</span>
+              <input
+                maxLength={16}
+                value={name}
+                placeholder="Wanderer"
+                onChange={(e) => {
+                  setName(e.target.value)
+                  setPlayerName(e.target.value)
+                }}
+              />
+            </label>
+          ) : null}
           <button className="cta" onClick={startGame}>Enter the desert</button>
           {coarse ? <p className="note">Built for keyboard and mouse.</p> : null}
           <Controls />
