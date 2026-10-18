@@ -253,6 +253,38 @@ function eatFoes(x: number, y: number, z: number, reach: number) {
   if (n > 0) toast(n > 1 ? `Shai-Hulud takes ${n} Harkonnen` : 'Shai-Hulud takes a Harkonnen', 'spice', 3500)
 }
 
+// A maker at the surface swallows what is in front of its mouth and grinds anyone its
+// front third rolls over, so riding one through a Harkonnen squad is a massacre.
+function trample(w: Worm) {
+  if (rt.phase !== 'playing' || !rt.foes.length) return
+  const s = w.spine
+  const k = w.size
+  const tl = Math.hypot(s[0] - s[12], s[1] - s[13], s[2] - s[14]) || 1
+  const r = R * k
+  const mx = w.head.x + ((s[0] - s[12]) / tl) * r * 0.6
+  const my = w.head.y + ((s[1] - s[13]) / tl) * r * 0.6
+  const mz = w.head.z + ((s[2] - s[14]) / tl) * r * 0.6
+  const reach = r * (1.1 + 0.45 * w.mouth)
+  const front = Math.floor(WORM_RINGS * 0.35)
+  let n = 0
+  for (const f of rt.foes) {
+    if (f.state === 'dead' || f.gone || rockMask(f.pos.x, f.pos.z) > 0.5) continue
+    let hit = Math.hypot(f.pos.x - mx, f.pos.y + 0.9 - my, f.pos.z - mz) < reach
+    for (let i = 0; i < front && !hit; i += 3) {
+      const rr = RADII[i] * k
+      const dx = f.pos.x - s[i * 3]
+      const dz = f.pos.z - s[i * 3 + 2]
+      hit = dx * dx + dz * dz < (rr + 1.5) * (rr + 1.5) && f.pos.y < s[i * 3 + 1] + rr + 1
+    }
+    if (!hit) continue
+    sandBurst(f.pos.x, f.pos.y, f.pos.z, 0.5, 90)
+    audio.foeDeath(panFor(f.pos.x, f.pos.z))
+    killFoe(f, 'worm')
+    n++
+  }
+  if (n > 0) toast(n > 1 ? `Shai-Hulud takes ${n} Harkonnen` : 'Shai-Hulud takes a Harkonnen', 'spice', 3500)
+}
+
 function slam(w: Worm, x: number, g: number, z: number) {
   const k = w.size
   sandBurst(x, g, z, 1.6 * k, Math.round(520 * Math.min(k, 2)))
@@ -386,6 +418,7 @@ function surface(w: Worm, dt: number) {
   w.speed = damp(w.speed, speed, 0.7, dt)
   advance(w, w.speed, surf(w), 8, dt)
   eatCheck(w)
+  trample(w)
   const dur = w.kind === 'lure' ? 24 : w.kind === 'hunter' ? 6 : 26
   if (w.st > dur) {
     w.attempts++
@@ -430,6 +463,7 @@ function ridden(w: Worm, dt: number) {
   const lift = rear * 2.0 + surge * 0.3 + Math.sin(w.life * 0.8) * 0.1
   advance(w, w.speed, surf(w) + R * w.size * lift, rear > 0 ? 5 : 3, dt)
   w.mouthTarget = Math.max(rear, target > 40 ? 0.75 : 0.1)
+  trample(w)
 }
 
 function effects(w: Worm, dt: number) {
