@@ -1091,3 +1091,12 @@ h2 {
   color: #f0c27a;
   white-space: nowrap;
 }
+
+.fade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+}

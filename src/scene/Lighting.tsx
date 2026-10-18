@@ -10,6 +10,9 @@ const SHADOW_RES = 2048
 const TEXEL = (SHADOW_HALF * 2) / SHADOW_RES
 const SAND = new THREE.Color('#c08a52')
 const STORM_FOG = new THREE.Color()
+const CAVE_FOG = new THREE.Color('#0d0a08')
+const CAVE_SKY = new THREE.Color(0.32, 0.26, 0.2)
+const CAVE_GROUND = new THREE.Color(0.09, 0.07, 0.05)
 
 const up = new THREE.Vector3(0, 1, 0)
 const fwd = new THREE.Vector3()
@@ -76,7 +79,7 @@ export function Lighting() {
     const hemi = new THREE.HemisphereLight('#ffffff', '#444444', 1)
     return { sun, hemi }
   }, [])
-  const env = useMemo(() => ({ ...buildEnvScene(), pmrem: new THREE.PMREMGenerator(gl), target: null as THREE.WebGLRenderTarget | null, next: 0 }), [gl])
+  const env = useMemo(() => ({ ...buildEnvScene(), pmrem: new THREE.PMREMGenerator(gl), target: null as THREE.WebGLRenderTarget | null, next: 0, cave: false }), [gl])
 
   useEffect(() => {
     scene.fog = new THREE.Fog('#d8b88a', 60, 640)
@@ -113,29 +116,45 @@ export function Lighting() {
     hemi.color.copy(e.hemiSky)
     hemi.groundColor.copy(e.hemiGround)
     hemi.intensity = e.hemiIntensity
+    const cave = !!rt.cave
+    if (cave) {
+      // Under the rock: no sun, only the warm dark and whatever glows.
+      sun.intensity = 0
+      hemi.color.copy(CAVE_SKY)
+      hemi.groundColor.copy(CAVE_GROUND)
+      hemi.intensity = 0.95
+    }
+    if (cave !== env.cave) {
+      env.cave = cave
+      env.next = 0
+    }
 
     // Haze thins out as you climb, so the ornithopter can see the land below it.
     const fog = scene.fog as THREE.Fog | null
     if (fog) {
       const c = rt.cam.pos
       const alt = Math.min(200, Math.max(0, c.y - terrainHeight(c.x, c.z)))
-      fog.color.copy(e.horizon)
+      fog.color.copy(cave ? CAVE_FOG : e.horizon)
       // Inside a storm the world closes in to a few metres of flying sand.
       const s = rt.storm.inside
       const near = 60 + alt * 0.9
       const far = 640 + alt * 0.25
       fog.near = near + (0 - near) * s
       fog.far = far + ((rt.storm.flowing ? 70 : 32) - far) * s
-      if (s > 0) fog.color.lerp(STORM_FOG.setRGB(0.3, 0.19, 0.1).multiplyScalar(0.3 + 0.7 * e.day), s * 0.7)
+      if (cave) {
+        fog.near = 40
+        fog.far = 520
+      }
+      if (s > 0 && !cave) fog.color.lerp(STORM_FOG.setRGB(0.3, 0.19, 0.1).multiplyScalar(0.3 + 0.7 * e.day), s * 0.7)
     }
 
     if (rt.realTime >= env.next) {
       env.next = rt.realTime + 3
-      env.u.uZen.value.copy(e.zenith)
-      env.u.uHor.value.copy(e.horizon)
-      env.u.uGround.value.copy(SAND).multiplyScalar(e.lightIntensity * 0.12 + e.hemiIntensity * 0.25)
+      env.u.uZen.value.copy(cave ? CAVE_GROUND : e.zenith)
+      env.u.uHor.value.copy(cave ? CAVE_SKY : e.horizon).multiplyScalar(cave ? 0.4 : 1)
+      env.u.uGround.value.copy(SAND).multiplyScalar(cave ? 0.05 : e.lightIntensity * 0.12 + e.hemiIntensity * 0.25)
       env.u.uSunDir.value.copy(e.sunDir)
-      env.u.uSunCol.value.copy(e.sunCol).multiplyScalar(e.sunDir.y > -0.05 ? 1 : 0)
+      env.u.uSunCol.value.copy(e.sunCol).multiplyScalar(e.sunDir.y > -0.05 && !cave ? 1 : 0)
       const old = env.target
       env.target = env.pmrem.fromScene(env.scene, 0.02, 0.1, 50)
       setReflections(env.target.texture)

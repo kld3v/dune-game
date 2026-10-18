@@ -70,7 +70,11 @@ export function PostFX() {
       fx.white = 1
       fx.flashWas = flash
     }
-    fx.white = Math.max(0, fx.white - delta * 5)
+    if (rt.whiteout > 0) {
+      fx.white = Math.max(fx.white, rt.whiteout)
+      rt.whiteout = 0
+    }
+    fx.white = Math.max(0, fx.white - delta * (fx.white > 0.6 ? 0.8 : 5))
     fx.time.uniforms.get('uSlow')!.value = rt.slowmo
     fx.time.uniforms.get('uFlash')!.value = flash
     fx.time.uniforms.get('uWhite')!.value = fx.white

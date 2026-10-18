@@ -79,6 +79,15 @@ export function rockMask(x: number, z: number): number {
   return Math.max(naturalRock(x, z), cityMask(x, z))
 }
 
+// The ground under your feet: the desert, or a cavern floor while you are inside one.
+let groundHook: ((x: number, z: number) => number) | null = null
+export function setGroundHook(fn: ((x: number, z: number) => number) | null) {
+  groundHook = fn
+}
+export function groundHeight(x: number, z: number): number {
+  return groundHook ? groundHook(x, z) : terrainHeight(x, z)
+}
+
 export function terrainHeight(x: number, z: number): number {
   const s = sandHeight(x, z)
   const r = naturalRock(x, z)

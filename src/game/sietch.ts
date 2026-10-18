@@ -8,6 +8,7 @@ import { audio } from './audio'
 import { damageFoe, power } from './combat'
 import { foretell } from './trip'
 import { panFor } from './actions'
+import { enterCave } from './cave'
 
 // Fremen sietches: hidden communities in the rock, at most one per cell of desert. Where
 // they stand is decided by the terrain alone, so the trust you earn with one is still
@@ -316,9 +317,9 @@ function show(s: Sietch) {
   })
 }
 
-function openTalk(s: Sietch) {
+export function openTalk(s: Sietch, at?: { x: number; z: number }) {
   rt.talking = s.key
-  const n = naibOf(s)
+  const n = at ?? naibOf(s)
   const p = rt.player.pos
   rt.cam.yaw = Math.atan2(n.x - p.x, n.z - p.z)
   rt.player.yaw = rt.cam.yaw
@@ -331,6 +332,12 @@ function openTalk(s: Sietch) {
 export function closeTalk() {
   rt.talking = null
   useUI.setState({ dialogue: null })
+}
+
+// Number keys pick an answer, E walks away. Used at the gate and in the cave below.
+export function talkKeys(s: Sietch) {
+  for (let k = 1; k <= 6; k++) if (consume(`Digit${k}`)) choose(s, k - 1)
+  if (rt.talking && consume('KeyE')) closeTalk()
 }
 
 function choose(s: Sietch, k: number) {
@@ -451,12 +458,26 @@ export function updateSietches(dt: number) {
       closeTalk()
       return
     }
-    for (let k = 1; k <= 6; k++) if (consume(`Digit${k}`)) choose(near, k - 1)
-    if (rt.talking && consume('KeyE')) closeTalk()
+    talkKeys(near)
     return
   }
   if (near) {
     rt.prompt = `E  Speak with ${near.naib}, Naib of ${near.name}`
     if (consume('KeyE')) openTalk(near)
+    return
+  }
+  // The door at the end of the walled way: they let in those they know.
+  for (const s of rt.sietches) {
+    if (!found(s)) continue
+    const dx = s.x - Math.sin(s.yaw) * 7.3 - p.x
+    const dz = s.z - Math.cos(s.yaw) * 7.3 - p.z
+    if (dx * dx + dz * dz > 3.5 * 3.5) continue
+    if ((rt.trust[s.key] ?? 0) >= 20) {
+      rt.prompt = `E  Enter ${s.name}`
+      if (consume('KeyE')) enterCave(s)
+    } else {
+      rt.prompt = 'The way in is barred. Earn their trust first (Known, 20 trust).'
+    }
+    break
   }
 }

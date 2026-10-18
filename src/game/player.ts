@@ -1,6 +1,6 @@
 import { rt } from './rt'
 import { consume, isDown } from './input'
-import { rockMask, terrainHeight } from './terrain'
+import { groundHeight, rockMask } from './terrain'
 import { damp, dampAngle } from './math'
 import { findMount, mountWorm } from './worms'
 import { boardThopter, callThopter } from './thopter'
@@ -8,6 +8,7 @@ import { plantThumper } from './thumper'
 import { audio } from './audio'
 import { puff } from './fx'
 import { power } from './combat'
+import { toast } from './ui'
 
 const MAX_SLOPE = 1.6 // rise over run; dune slip faces are ~0.9, rock cliffs block
 
@@ -43,16 +44,16 @@ export function updateFoot(dt: number) {
   }
   p.vel.y -= 24 * dt
 
-  const g0 = terrainHeight(p.pos.x, p.pos.z)
+  const g0 = groundHeight(p.pos.x, p.pos.z)
   let nx = p.pos.x + p.vel.x * dt
   let nz = p.pos.z + p.vel.z * dt
   if (p.grounded) {
     const step = Math.hypot(nx - p.pos.x, nz - p.pos.z)
-    if (step > 1e-5 && (terrainHeight(nx, nz) - g0) / step > MAX_SLOPE) {
+    if (step > 1e-5 && (groundHeight(nx, nz) - g0) / step > MAX_SLOPE) {
       const sx = Math.abs(nx - p.pos.x)
       const sz = Math.abs(nz - p.pos.z)
-      if (sx > 1e-5 && (terrainHeight(nx, p.pos.z) - g0) / sx <= MAX_SLOPE) nz = p.pos.z
-      else if (sz > 1e-5 && (terrainHeight(p.pos.x, nz) - g0) / sz <= MAX_SLOPE) nx = p.pos.x
+      if (sx > 1e-5 && (groundHeight(nx, p.pos.z) - g0) / sx <= MAX_SLOPE) nz = p.pos.z
+      else if (sz > 1e-5 && (groundHeight(p.pos.x, nz) - g0) / sz <= MAX_SLOPE) nx = p.pos.x
       else {
         nx = p.pos.x
         nz = p.pos.z
@@ -62,7 +63,7 @@ export function updateFoot(dt: number) {
   p.pos.x = nx
   p.pos.z = nz
   p.pos.y += p.vel.y * dt
-  const g = terrainHeight(p.pos.x, p.pos.z)
+  const g = groundHeight(p.pos.x, p.pos.z)
 
   // Dropping onto a surfaced worm's back sets the hooks automatically.
   if (!p.grounded && p.vel.y < 0) {
@@ -73,7 +74,7 @@ export function updateFoot(dt: number) {
     }
   }
 
-  p.onRock = rockMask(p.pos.x, p.pos.z) > 0.5
+  p.onRock = !!rt.cave || rockMask(p.pos.x, p.pos.z) > 0.5
   if (p.pos.y <= g) {
     if (!p.grounded && p.airTime > 0.3) {
       puff(p.pos.x, g, p.pos.z, 1.2, 8)
@@ -123,6 +124,13 @@ export function updateFoot(dt: number) {
     if (mount) mountWorm(mount.w, mount.s)
     else boardThopter()
   }
-  if (consume('KeyT')) plantThumper()
-  if (consume('KeyQ')) callThopter()
+  const underground = !!rt.cave
+  if (consume('KeyT')) {
+    if (underground) toast('Not down here. The makers do not come into the rock.', 'info', 2500)
+    else plantThumper()
+  }
+  if (consume('KeyQ')) {
+    if (underground) toast('Your ornithopter cannot reach you under the rock.', 'info', 2500)
+    else callThopter()
+  }
 }

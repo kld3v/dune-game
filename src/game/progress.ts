@@ -42,6 +42,7 @@ interface Profile {
   thopter: number
   paracompass: boolean
   rings: number
+  waterOfLife: boolean
   trialTitle: string
 }
 
@@ -73,6 +74,7 @@ export function loadProfile() {
   rt.upgrades.thopter = Math.max(1, p.thopter ?? 1)
   rt.upgrades.paracompass = !!p.paracompass
   rt.upgrades.rings = Math.max(0, Math.floor(p.rings ?? 0))
+  rt.upgrades.waterOfLife = !!p.waterOfLife
   rt.trial.title = p.trialTitle ?? ''
 }
 
@@ -95,6 +97,7 @@ export function saveProfile() {
     thopter: rt.upgrades.thopter,
     paracompass: rt.upgrades.paracompass,
     rings: rt.upgrades.rings,
+    waterOfLife: rt.upgrades.waterOfLife,
     trialTitle: rt.trial.title,
   }
   try {

@@ -22,6 +22,7 @@ import { restoreTrial, updateTrials } from './trials'
 import { loadProfile, updateProgress } from './progress'
 import { initSietches, updateSietches } from './sietch'
 import { cityLayout, updateCity } from './city'
+import { enterCave, updateCave, updateFade } from './cave'
 
 const HINTS = [
   'Walk without rhythm. The sand listens. Hold C to sandwalk.',
@@ -185,18 +186,20 @@ function updateAudio() {
   const thopOn = t.alive && t.wingRate > 1
   const alt = rt.mode === 'thopter' ? t.pos.y - terrainHeight(t.pos.x, t.pos.z) : 0
   const quiet = rt.phase === 'paused'
+  // In the caves the surface goes silent: no worm, thopter or carrier through the rock.
+  const away = quiet || !!rt.cave
   const c = rt.carrier
   const cv = c.active ? clamp(1 - rt.cam.pos.distanceTo(c.pos) / 400, 0, 1) : 0
   audio.update({
-    wind: quiet ? 0.15 : 0.45 + clamp(alt / 120, 0, 0.5) + (rt.mode === 'worm' ? 0.35 : 0) + rt.storm.inside * 1.6,
-    rumble: quiet ? 0 : clamp(rumble, 0, 1.2),
-    grind: quiet ? 0 : clamp(rumble, 0, 1),
-    thop: quiet || !thopOn ? 0 : rt.mode === 'thopter' ? 0.9 : tv * tv,
+    wind: rt.cave ? 0.04 : quiet ? 0.15 : 0.45 + clamp(alt / 120, 0, 0.5) + (rt.mode === 'worm' ? 0.35 : 0) + rt.storm.inside * 1.6,
+    rumble: away ? 0 : clamp(rumble, 0, 1.2),
+    grind: away ? 0 : clamp(rumble, 0, 1),
+    thop: away || !thopOn ? 0 : rt.mode === 'thopter' ? 0.9 : tv * tv,
     thopRate: t.wingRate,
     thopPitch: 48 + t.vel.length() * 0.35,
     thopPan: rt.mode === 'thopter' ? 0 : panFor(t.pos.x, t.pos.z),
     trip: quiet ? 0 : rt.trip,
-    carrier: quiet ? 0 : cv * cv,
+    carrier: away ? 0 : cv * cv,
     carrierPan: panFor(c.pos.x, c.pos.z),
   })
 }
@@ -238,26 +241,32 @@ export function update(rawDt: number, camera: THREE.PerspectiveCamera) {
     updateCombat(dt)
   }
   if (live) {
-    updateThopter(dt)
-    updateWorms(wormDt)
-    if (playing && rt.mode === 'worm') updateRiding(dt)
-    updateHarkonnens(dt, foeDt)
-    updateSietches(dt)
-    updateCity(dt)
-    updateStorm(dt)
-    updateThumper(dt)
-    updateSpice(dt)
+    // Underground the desert holds its breath: no worms, raids or storms reach the caves.
+    if (rt.cave) {
+      updateCave(dt)
+    } else {
+      updateThopter(dt)
+      updateWorms(wormDt)
+      if (playing && rt.mode === 'worm') updateRiding(dt)
+      updateHarkonnens(dt, foeDt)
+      updateSietches(dt)
+      updateCity(dt)
+      updateStorm(dt)
+      updateThumper(dt)
+      updateSpice(dt)
+    }
     updateTrip(dt)
     if (playing) {
-      updateThreats(dt)
+      if (!rt.cave) updateThreats(dt)
       updateTrials(dt)
       updateProgress(dt)
     }
     if (rt.phase === 'title') updateTitle(dt)
     const c = rt.cam.pos
-    windSand(c.x, c.z, terrainHeight, Math.floor(dt * 70 + Math.random()))
+    if (!rt.cave) windSand(c.x, c.z, terrainHeight, Math.floor(dt * 70 + Math.random()))
     hints(dt)
   }
+  updateFade(dt)
   placeCamera(dt, camera)
   audioT -= dt
   if (audioT <= 0) {
@@ -316,6 +325,15 @@ export function installDebug() {
       if (best) rt.trust[best.key] = v
     },
     ride: (size = 1) => debugRide(size),
+    cave: () => {
+      const p = rt.player.pos
+      let best = rt.sietches[0]
+      for (const s of rt.sietches) if (Math.hypot(s.x - p.x, s.z - p.z) < Math.hypot(best.x - p.x, best.z - p.z)) best = s
+      if (!best) return null
+      rt.trust[best.key] = Math.max(rt.trust[best.key] ?? 0, 60)
+      enterCave(best)
+      return best.name
+    },
     city: () => {
       const L = cityLayout()
       const x = L.trader.x + Math.sin(L.trader.yaw) * 2.5

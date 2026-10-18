@@ -127,6 +127,25 @@ export interface Ally {
   anim: string
 }
 
+// The cavern beneath a sietch, while you are inside it.
+export interface Cave {
+  key: string
+  name: string
+  naib: string
+  x: number
+  y: number
+  z: number
+  radius: number
+  height: number
+  waterY: number
+  seed: number
+  pool: { x: number; z: number; r: number }
+  exit: { x: number; z: number; yaw: number }
+  naibAt: { x: number; z: number; yaw: number }
+  mother: { x: number; z: number; yaw: number }
+  shafts: { x: number; z: number; r: number }[]
+}
+
 export interface SpiceField {
   id: number
   x: number
@@ -312,7 +331,10 @@ export const rt = {
   },
   progress: { level: 1, xp: 0, frac: 0, dirty: false, saveT: 0, gainAt: -99, levelAt: -99 },
   trust: {} as Record<string, number>,
-  upgrades: { dmg: 1, voice: false, stillsuit: false, shield: false, thopter: 1, paracompass: false, rings: 0 },
+  upgrades: { dmg: 1, voice: false, stillsuit: false, shield: false, thopter: 1, paracompass: false, rings: 0, waterOfLife: false },
+  cave: null as Cave | null,
+  fade: 0,
+  whiteout: 0,
   solari: 0,
   shieldOn: false,
   sietches: [] as Sietch[],

@@ -665,6 +665,15 @@ class AudioEngine {
     n.connect(bp).connect(g).connect(out)
   }
 
+  // A single drop falling into still water somewhere in the dark.
+  drip(pan: number, vol = 1) {
+    const ctx = this.ctx
+    if (!ctx) return
+    const t = ctx.currentTime
+    const f = 900 + Math.random() * 900
+    this.tone(t, 'sine', f * 1.6, f * 0.7, 0.14, 0.05 * vol, 0.002, 0.12, this.dest(pan, 0.8))
+  }
+
   blip() {
     const ctx = this.ctx
     if (!ctx) return

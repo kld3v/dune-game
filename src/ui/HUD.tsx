@@ -93,6 +93,7 @@ export function HUD() {
   const stormEl = useRef<HTMLDivElement>(null)
   const voiceChip = useRef<HTMLDivElement>(null)
   const voiceFill = useRef<HTMLDivElement>(null)
+  const fadeEl = useRef<HTMLDivElement>(null)
   const solariEl = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
@@ -238,6 +239,7 @@ export function HUD() {
       const hit = clamp(1 - (rt.time - c.hurtAt) / 0.6, 0, 1)
       const low = c.hp / c.maxHp < 0.3 ? 0.25 + 0.15 * Math.sin(rt.realTime * 5) : 0
       if (hurt.current) hurt.current.style.opacity = String(Math.max(hit * 0.85, low))
+      if (fadeEl.current) fadeEl.current.style.opacity = String(rt.fade)
       const epic = rt.riding.epic
       if (boxTop.current) boxTop.current.style.transform = `scaleY(${epic})`
       if (boxBot.current) boxBot.current.style.transform = `scaleY(${epic})`
@@ -246,12 +248,14 @@ export function HUD() {
         voiceChip.current.style.display = on ? '' : 'none'
         voiceChip.current.classList.toggle('ready', c.voiceCD <= 0 && rt.melange >= 0.25)
         voiceChip.current.classList.toggle('dry', rt.melange < 0.25)
-        if (voiceFill.current) voiceFill.current.style.transform = `scaleX(${1 - clamp(c.voiceCD / 9, 0, 1)})`
+        if (voiceFill.current) voiceFill.current.style.transform = `scaleX(${1 - clamp(c.voiceCD / (rt.upgrades.waterOfLife ? 6 : 9), 0, 1)})`
       }
       if (stormEl.current) {
         const sp = rt.mode === 'thopter' ? rt.thopter.pos : p
         let txt = ''
-        if (st.active && st.inside > 0.05) {
+        if (rt.cave) {
+          txt = ''
+        } else if (st.active && st.inside > 0.05) {
           txt = st.flowing ? 'Coriolis storm  ·  flowing with it'
             : power() >= 0.45 ? 'Coriolis storm  ·  move with the wind'
             : 'Coriolis storm  ·  take spice and move with the wind, or reach rock, or climb above it'
@@ -289,6 +293,7 @@ export function HUD() {
   return (
     <div className={`hud ${active ? '' : 'hud-hidden'}`}>
       <div className="threat" ref={threat} />
+      <div className="fade" ref={fadeEl} />
       <div className="hurt" ref={hurt} />
       <div className="letterbox top" ref={boxTop} />
       <div className="letterbox bottom" ref={boxBot} />
@@ -401,8 +406,8 @@ export function HUD() {
       ) : null}
       {prompt ? (
         <div className="prompt">
-          <kbd>{key}</kbd>
-          <span>{rest.join('  ')}</span>
+          {rest.length ? <kbd>{key}</kbd> : null}
+          <span>{rest.length ? rest.join('  ') : key}</span>
         </div>
       ) : null}
       <div className="mode">

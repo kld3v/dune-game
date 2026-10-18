@@ -1,16 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
-import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { rt } from '../game/rt'
 import { CITY_H, CITY_X, CITY_Z } from '../game/terrain'
 import { cityLayout, walkers } from '../game/city'
 import { clamp, dampAngle } from '../game/math'
 import { reflective } from './reflections'
+import { castFor, makePerson, playClip, useCast, type Person, type Role } from './people'
 
-const MODEL_URL = '/models/arissa.glb'
 const night = { value: 0 }
 
 // Concrete with window slits: dark by day, warm at night, a few lit per floor at random.
@@ -125,74 +122,22 @@ function buildCity() {
   return { group, lightMat }
 }
 
-interface Person {
-  root: THREE.Group
-  mixer: THREE.AnimationMixer
-  actions: Map<string, THREE.AnimationAction>
-  current: string
-}
-
-const ROBES = [new THREE.Color(1.9, 1.75, 1.5), new THREE.Color(1.6, 1.3, 1.0), new THREE.Color(1.3, 1.25, 1.2), new THREE.Color(1.8, 1.45, 1.1)]
-const GUARD = new THREE.Color(0.75, 0.95, 0.8)
-const MERCHANT = new THREE.Color(2.0, 1.3, 0.9)
-
-function makePerson(tmpl: THREE.Object3D, clips: THREE.AnimationClip[], tint: THREE.Color, scale: number): Person {
-  const model = cloneSkinned(tmpl)
-  model.scale.multiplyScalar(scale)
-  model.traverse((o) => {
-    const m = o as THREE.Mesh
-    if (!m.isMesh) return
-    m.castShadow = true
-    m.frustumCulled = false
-    const mat = (m.material as THREE.MeshStandardMaterial).clone()
-    mat.color.copy(tint)
-    mat.metalness = 0
-    mat.roughness = 0.85
-    m.material = reflective(mat)
-  })
-  const root = new THREE.Group()
-  root.add(model)
-  const mixer = new THREE.AnimationMixer(model)
-  const actions = new Map<string, THREE.AnimationAction>()
-  for (const c of clips) actions.set(c.name, mixer.clipAction(c))
-  actions.get('idle')?.play()
-  root.visible = false
-  return { root, mixer, actions, current: 'idle' }
-}
-
-function play(p: Person, name: string) {
-  if (p.current === name) return
-  const next = p.actions.get(name) ?? p.actions.get('idle')
-  const prev = p.actions.get(p.current)
-  if (!next) return
-  next.reset().fadeIn(0.3).play()
-  if (prev && prev !== next) prev.fadeOut(0.3)
-  p.current = name
-}
-
 export function City() {
   const city = useMemo(buildCity, [])
-  const [gltf, setGltf] = useState<{ scene: THREE.Object3D; clips: THREE.AnimationClip[] } | null>(null)
+  const assets = useCast()
   const people = useMemo(() => {
-    if (!gltf) return null
-    return {
-      walkers: Array.from({ length: 6 }, (_, i) => makePerson(gltf.scene, gltf.clips, ROBES[i % ROBES.length], 0.93 + 0.1 * ((i * 0.618) % 1))),
-      guards: Array.from({ length: 2 }, () => makePerson(gltf.scene, gltf.clips, GUARD, 1.04)),
-      trader: makePerson(gltf.scene, gltf.clips, MERCHANT, 0.98),
+    if (!assets) return null
+    const make = (role: Role, scale: number) => {
+      const a = castFor(assets, role)
+      return a ? makePerson(a, role, { scale }) : null
     }
-  }, [gltf])
-
-  useEffect(() => {
-    const loader = new GLTFLoader()
-    loader.setMeshoptDecoder(MeshoptDecoder)
-    loader.load(MODEL_URL, (g) => {
-      const b = new THREE.Box3().setFromObject(g.scene)
-      g.scene.scale.setScalar(1.8 / Math.max(0.1, b.max.y - b.min.y))
-      setGltf({ scene: g.scene, clips: g.animations })
-    }, undefined, () => {
-      // The city stands empty without its people.
-    })
-  }, [])
+    const all = (list: (Person | null)[]) => list.filter((v): v is Person => !!v)
+    return {
+      walkers: all(Array.from({ length: 6 }, (_, i) => make(i % 2 ? 'townswoman' : 'townsman', 0.93 + 0.1 * ((i * 0.618) % 1)))),
+      guards: all([make('guard', 1.04), make('guard', 1.02)]),
+      trader: make('merchant', 0.98),
+    }
+  }, [assets])
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.1)
@@ -208,7 +153,7 @@ export function City() {
       if (!v.root.visible || !w) return
       v.root.position.set(w.pos.x, CITY_H, w.pos.z)
       v.root.rotation.y = w.yaw
-      play(v, w.speed > 0.4 ? 'walk' : 'idle')
+      playClip(v, w.speed > 0.4 ? 'walk' : 'idle', 0.3)
       const a = v.actions.get('walk')
       if (a) a.timeScale = clamp(w.speed / 1.45, 0.6, 1.3)
       v.mixer.update(dt)
@@ -222,8 +167,8 @@ export function City() {
       v.mixer.update(dt * 0.8)
     })
     const t = people.trader
-    t.root.visible = near
-    if (near) {
+    if (t) t.root.visible = near
+    if (t && near) {
       const d = Math.hypot(p.x - L.trader.x, p.z - L.trader.z)
       const want = d < 15 ? Math.atan2(p.x - L.trader.x, p.z - L.trader.z) : L.trader.yaw
       t.root.rotation.y = dampAngle(t.root.rotation.y, want, 3, dt)
@@ -236,7 +181,7 @@ export function City() {
     <>
       <primitive object={city.group} />
       {people
-        ? [...people.walkers, ...people.guards, people.trader].map((v, i) => <primitive key={i} object={v.root} />)
+        ? [...people.walkers, ...people.guards, ...(people.trader ? [people.trader] : [])].map((v, i) => <primitive key={i} object={v.root} />)
         : null}
     </>
   )

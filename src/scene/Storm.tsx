@@ -150,7 +150,7 @@ export function Storm() {
 
   useFrame(({ camera }) => {
     const s = rt.storm
-    shell.visible = s.inside > 0.02
+    shell.visible = s.inside > 0.02 && !rt.cave
     if (shell.visible) {
       shell.position.copy(camera.position)
       su.uTime.value = rt.time
@@ -163,7 +163,7 @@ export function Storm() {
       su.uLit.value.setRGB(0.62, 0.4, 0.22).multiplyScalar(light)
     }
     const on = s.active ? 1 - s.inside : 0
-    mesh.visible = on > 0.01
+    mesh.visible = on > 0.01 && !rt.cave
     if (!mesh.visible) return
     const c = camera.position
     const along = c.x * s.dirX + c.z * s.dirZ

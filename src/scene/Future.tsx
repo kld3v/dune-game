@@ -95,7 +95,8 @@ export function Future() {
 
   useFrame(() => {
     const trip = rt.trip
-    const sight = smoothstep(0.3, 0.6, trip)
+    // After the Water of Life the future never quite fades, even sober.
+    const sight = Math.max(smoothstep(0.3, 0.6, trip), rt.upgrades.waterOfLife && !rt.cave ? 0.45 : 0)
     f.group.visible = sight > 0.01
     if (!f.group.visible) return
     const t = rt.time

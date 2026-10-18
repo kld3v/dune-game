@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { rt, WORM_RINGS } from './rt'
 import { input, isDown } from './input'
-import { terrainHeight } from './terrain'
+import { groundHeight } from './terrain'
 import { clamp, damp, smoothstep, wrapAngle } from './math'
 import { RADII } from './wormShape'
 
@@ -141,8 +141,8 @@ export function placeCamera(dt: number, camera: THREE.PerspectiveCamera) {
 
   const clearance = rt.mode === 'foot' && rt.phase !== 'title' ? 0.7 : 1.6
   const minY = Math.max(
-    terrainHeight(px, pz) + clearance,
-    terrainHeight((px + c.target.x) * 0.5, (pz + c.target.z) * 0.5) + clearance * 0.5,
+    groundHeight(px, pz) + clearance,
+    groundHeight((px + c.target.x) * 0.5, (pz + c.target.z) * 0.5) + clearance * 0.5,
   )
   if (py < minY) py = minY
 

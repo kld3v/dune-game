@@ -1,7 +1,7 @@
 import { rt, type Foe, type FoeState } from './rt'
 import { consume } from './input'
 import { clamp, dampAngle } from './math'
-import { terrainHeight } from './terrain'
+import { groundHeight } from './terrain'
 import { audio } from './audio'
 import { toast, voiceFlash } from './ui'
 import { jolt, killPlayer, panFor } from './actions'
@@ -193,7 +193,7 @@ function theVoice() {
     return
   }
   rt.melange -= 0.2
-  c.voiceCD = 9
+  c.voiceCD = rt.upgrades.waterOfLife ? 6 : 9
   c.voiceAt = rt.time
   c.attacking = false
   const p = rt.player.pos
@@ -255,7 +255,7 @@ export function updateCombat(dt: number) {
     if (step > 0) {
       const nx = p.pos.x + Math.sin(p.yaw) * step
       const nz = p.pos.z + Math.cos(p.yaw) * step
-      if (terrainHeight(nx, nz) - terrainHeight(p.pos.x, p.pos.z) < step * 1.6) {
+      if (groundHeight(nx, nz) - groundHeight(p.pos.x, p.pos.z) < step * 1.6) {
         p.pos.x = nx
         p.pos.z = nz
       }
